@@ -88,12 +88,25 @@ function angelio_permission() {
   );
 }
 
+function angelio_theme() {
+  $items = array();
+
+  $items['unfall_polizze'] = array(
+    'type' => 'theme',
+    'template' => 'unfall-polizze',
+    'path' => drupal_get_path('module', 'angelio'),    
+    'variables' => array('userdata' => NULL),
+  );
+
+  return $items;
+}
 
 
 function fdate($datetimestring = '1970-01-01 00:00:00', $format = 'U') {
   // Create a datetime object, return it formatted
   // If you want to give credit for this somewhere, thanks.
   // You really don't have to though; this is kinda obvious
+  
   $dt = new DateTime($datetimestring);
   return $dt->format($format);
 } 
@@ -159,32 +172,32 @@ function angelio_menu() {
     );
     
   $items['downline/%'] = array(
-    'title' => 'My Downline',
-    'description' => 'My angelio downline',
+    'title' => 'Meine Genealogie',
+    'description' => 'Meine angelio Genealogie',
     'page callback' => 'angelio_mydownline',
     'page arguments' => array(2),
     'access arguments' => array('access all downlines'),
   );
   
   $items['downline'] = array(
-    'title' => 'My Downline',
-    'description' => 'My angelio downline',
+    'title' => 'Meine Genealogie',
+    'description' => 'Meine angelio Genealogie',
     'page callback' => 'angelio_mydownline',
     'page arguments' => array(2),    
     'access arguments' => array('access own downline'),
   );
       	
   $items['matrix/%'] = array(
-    'title' => 'My 3x9 Matris',
-    'description' => 'My angelio matrix',
+    'title' => 'Meine 3x9 Matris',
+    'description' => 'Meine angelio 3x9 Matrix',
     'page callback' => 'angelio_mymatrix',
     'page arguments' => array(2),
     'access arguments' => array('access all downlines'),
   );
   
   $items['matrix'] = array(
-    'title' => 'My 3x9 Matrix',
-    'description' => 'My angelio matrix',
+    'title' => 'Meine 3x9 Matrix',
+    'description' => 'Meine angelio 3x9 Matrix',
     'page callback' => 'angelio_mymatrix',
     'page arguments' => array(2),    
     'access arguments' => array('access own downline'),
@@ -205,24 +218,6 @@ function angelio_menu() {
         'access arguments' => array('administer site configuration'),
         'type' => MENU_CALLBACK,
     );
-	
-/*    
-
-    $items['provision'] = array(
-        'title' => 'Meine angelio Abrechnung',
-        'page callback' => 'angelio_commission',
-        'page arguments' => array('0'),                       
-        'access arguments' => array('access own commission'),
-        'type' => MENU_CALLBACK,
-    );
-    
-        $items['provision/%'] = array(
-        'title' => 'Meine angelio Abrechnung',
-        'page callback' => 'angelio_commission',
-        'page arguments' => array(1),               
-        'access arguments' => array('access all commissions'),
-        'type' => MENU_CALLBACK,
-    );	
 
     $items['vertraege'] = array(
         'title' => 'Meine angelio Verträge',
@@ -247,6 +242,25 @@ function angelio_menu() {
         'access arguments' => array('access own polizzen'),
         'type' => MENU_CALLBACK,
     );
+	
+/*    
+
+    $items['provision'] = array(
+        'title' => 'Meine angelio Abrechnung',
+        'page callback' => 'angelio_commission',
+        'page arguments' => array('0'),                       
+        'access arguments' => array('access own commission'),
+        'type' => MENU_CALLBACK,
+    );
+    
+        $items['provision/%'] = array(
+        'title' => 'Meine angelio Abrechnung',
+        'page callback' => 'angelio_commission',
+        'page arguments' => array(1),               
+        'access arguments' => array('access all commissions'),
+        'type' => MENU_CALLBACK,
+    );	
+
 	
     $items['konto'] = array(
         'title' => 'Mein angelio Kontoauszug',
@@ -763,9 +777,52 @@ global $user;
 		$userdata = angelio_get_userobject($uid);
 	}	
 	
+	drupal_set_title('Genealogie von ' . $userdata->first_name);
+	$output = "<p>Die Genealogie ist die tatsächlich gesponserte, nicht in die 3x9 Matrix gepresste Downline.</p>";
+	
+	db_set_active('angelio_daten');
+	$sql = "SELECT KundenID_online, strUsername_O, strVName_O, strNName_O, strEmail_O, strTelefon_O, ysnInaktiv FROM {tbl_Kunden_Online} WHERE KundenID_online=" . $userdata->upline_id;
+	$row = db_query($sql)->fetchAssoc();  
+	
+	$output .= "<hr><h3>Upline</h3>";
+	$output .= '<table id="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
+	$aktiv = ($row['ysnInaktiv'] == 0) ? 'Ja' : 'Nein';
+	if (user_access('access all downlines')) {
+		$output .= '<tr><td <td class="tblDownlineUName"><a href="/downline/' . $row['KundenID_online'] . '">' . $row['strUsername_O'] . '</a></td><td class="tblDownlineVName">' . $row['strVName_O'] . '</td><td class="tblDownlineVName">' . $row['strNName_O'] . '</td><td class="tblDownlineEmail">' . $row['strEmail_O'] . '</td><td class="tblDownlineTelefon">' . $row['strTelefon_O'] . '</td><td class="tblDownlineAktiv">' . $aktiv . '</td></tr>';
+	} else {
+		$output .= '<tr><td <td class="tblDownlineUName">' . $row['strUsername_O'] . '</td><td class="tblDownlineVName">' . $row['strVName_O'] . '</td><td class="tblDownlineVName">' . $row['strNName_O'] . '</td><td class="tblDownlineEmail">' . $row['strEmail_O'] . '</td><td class="tblDownlineTelefon">' . $row['strTelefon_O'] . '</td><td class="tblDownlineAktiv">' . $aktiv . '</td></tr>';
+	}
+	$output .= '</table>'; 
+		
+	$sql = "SELECT KundenID_online, strUsername_O, strVName_O, strNName_O, strEmail_O, strTelefon_O, ysnInaktiv FROM tbl_Kunden_Online WHERE ReferrerID_O=" . $userdata->member_id;
+	$result = db_query($sql);
+	
+	$output .= "<hr><h3>Frontlines</h3>";
+	if ($result) {
+  		$output .= '<p>Anzahl Frontlines: ' . $result->rowCount() . "</p>";
+	} else {
+		db_set_active();
+		return $output . '<p>Sie haben noch keine Downline...</p>';
+	}
+	
+	$output .= '<table id="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
+
+	while ($row = $result->fetchAssoc()) {
+		$aktiv = ($row['ysnInaktiv'] == 0) ? 'Ja' : 'Nein';		
+		if (user_access('access all downlines')) {
+			$output .= '<tr><td class="tblDownlineUName"><a href="/downline/' . $row['KundenID_online'] . '">' . $row['strUsername_O'] . '</a></td><td class="tblDownlineVName">' . $row['strVName_O'] . '</td><td class="tblDownlineVName">' . $row['strNName_O'] . '</td><td class="tblDownlineEmail">' . $row['strEmail_O'] . '</td><td class="tblDownlineTelefon">' . $row['strTelefon_O'] . '</td><td class="tblDownlineAktiv">' . $aktiv . '</td></tr>';
+		} else {
+			$output .= '<tr><td class="tblDownlineUName">' . $row['strUsername_O'] . '</td><td class="tblDownlineVName">' . $row['strVName_O'] . '</td><td class="tblDownlineNName">' . $row['strNName_O'] . '</td><td class="tblDownlineEmail">' . $row['strEmail_O'] . '</td><td class="tblDownlineTelefon">' . $row['strTelefon_O'] . '</td><td class="tblDownlineAktiv">' . $aktiv . '</td></tr>';
+		}
+	} 
+	$output .= '</table>';
+	
+	db_set_active();
+
+	$output .= "<hr><h3>Struktur</h3>";	
+		
 	$statistik = array();
 	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILVER'=>0, 'GOLD'=>0,'PLATIN'=>0);
-	$output = "";
 	
 	$tree = angelio_downline_tree($statistik, $bonuslevels, $userdata->member_id, $userdata->member_id,1,false,9);
 	
@@ -805,6 +862,50 @@ global $user;
 		$userdata = angelio_get_userobject($uid);
 	}	
 	
+	drupal_set_title('3x9 Matrix von ' . $userdata->first_name);
+	$output ="";
+	
+	db_set_active('angelio_daten');
+	$sql = "SELECT KundenID_online, strUsername_O, strVName_O, strNName_O, strEmail_O, strTelefon_O, ysnInaktiv FROM {tbl_Kunden_Online} WHERE KundenID_online=" . $userdata->upline_id;
+	$row = db_query($sql)->fetchAssoc();  
+	
+	$output = "<hr><h3>Upline</h3>";
+	$output .= '<table id="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
+	$aktiv = ($row['ysnInaktiv'] == 0) ? 'Ja' : 'Nein';
+	if (user_access('access all downlines')) {
+		$output .= '<tr><td <td class="tblDownlineUName"><a href="/downline/' . $row['KundenID_online'] . '">' . $row['strUsername_O'] . '</a></td><td class="tblDownlineVName">' . $row['strVName_O'] . '</td><td class="tblDownlineVName">' . $row['strNName_O'] . '</td><td class="tblDownlineEmail">' . $row['strEmail_O'] . '</td><td class="tblDownlineTelefon">' . $row['strTelefon_O'] . '</td><td class="tblDownlineAktiv">' . $aktiv . '</td></tr>';
+	} else {
+		$output .= '<tr><td <td class="tblDownlineUName">' . $row['strUsername_O'] . '</td><td class="tblDownlineVName">' . $row['strVName_O'] . '</td><td class="tblDownlineVName">' . $row['strNName_O'] . '</td><td class="tblDownlineEmail">' . $row['strEmail_O'] . '</td><td class="tblDownlineTelefon">' . $row['strTelefon_O'] . '</td><td class="tblDownlineAktiv">' . $aktiv . '</td></tr>';
+	}
+	$output .= '</table>';
+		
+	$sql = "SELECT KundenID_online, strUsername_O, strVName_O, strNName_O, strEmail_O, strTelefon_O, ysnInaktiv FROM tbl_Kunden_Online WHERE SponsorID_O=" . $userdata->member_id;
+	$result = db_query($sql);
+	
+	$output .= "<hr><h3>Frontlines</h3>";
+	if ($result) {
+  		$output .= '<p>Anzahl Frontlines: ' . $result->rowCount() . "</p>";
+	} else {
+		db_set_active();
+		return $output . '<p>Sie haben noch keine Downline...</p>';
+	}
+	
+	$output .= '<table id="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
+
+	while ($row = $result->fetchAssoc()) {
+		$aktiv = ($row['ysnInaktiv'] == 0) ? 'Ja' : 'Nein';		
+		if (user_access('access all downlines')) {
+			$output .= '<tr><td class="tblDownlineUName"><a href="/downline/' . $row['KundenID_online'] . '">' . $row['strUsername_O'] . '</a></td><td class="tblDownlineVName">' . $row['strVName_O'] . '</td><td class="tblDownlineVName">' . $row['strNName_O'] . '</td><td class="tblDownlineEmail">' . $row['strEmail_O'] . '</td><td class="tblDownlineTelefon">' . $row['strTelefon_O'] . '</td><td class="tblDownlineAktiv">' . $aktiv . '</td></tr>';
+		} else {
+			$output .= '<tr><td class="tblDownlineUName">' . $row['strUsername_O'] . '</td><td class="tblDownlineVName">' . $row['strVName_O'] . '</td><td class="tblDownlineNName">' . $row['strNName_O'] . '</td><td class="tblDownlineEmail">' . $row['strEmail_O'] . '</td><td class="tblDownlineTelefon">' . $row['strTelefon_O'] . '</td><td class="tblDownlineAktiv">' . $aktiv . '</td></tr>';
+		}
+	} 
+	$output .= '</table>';
+	
+	db_set_active();
+
+	$output .= "<hr><h3>Struktur</h3>";	
+	
 		// Bis zu welcher Tiefe bekommt der Empfänger den Bonus?
 	db_set_active('angelio_daten');
 	$sql = "SELECT title, depth FROM tbl_Kunden_Online m, tblBonuslevels b WHERE m.bonuslevel = b.bid AND m.KundenID_online='" . $userdata->member_id . "'";
@@ -815,7 +916,7 @@ global $user;
 	
 	$statistik = array();
 	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILVER'=>0, 'GOLD'=>0,'PLATIN'=>0);
-	$output = "<h3>Bonuslevel: " . $title . "</h3>";
+	$output .= "<h3>Bonuslevel: " . $title . "</h3>";
 	$output .= "<h3>" . t("Paylevels: ") . $depth . "</h3>";
 
 
@@ -1011,7 +1112,7 @@ function getNextLevelIds(&$nextone, $sponsor_id) {
 }
 
 // Upline rekursiv bis zur 9. Ebene aktualisieren
-function angelio_upline($member_id, $level = 1) {
+function update_upline($member_id, $level = 1) {
 	
 	if (($member_id == "0") || ($level > 9)) {
 		return; 
@@ -1052,45 +1153,42 @@ function compareHostIds($a, $b)
 
 function angelio_resettests() {
 	db_set_active('angelio_daten');	
-	$result = db_query("DELETE FROM {tbl_Kunden_Online} WHERE KundenID_online > 1 OR KundenID_online=0");
+	$result = db_query("DELETE FROM {tbl_Kunden_Online} WHERE ysnIsTest = 1 OR KundenID_online=0");
 	db_set_active();
 	$statistik = array();
 	$bonuslevels = array();
-	$output = boucado_downline_tree($statistik,$bonuslevels,1,1,1);
-	return "<p>Testdaten gelöscht.</p>" . $output;
+	return "<p>Testdaten gelöscht.</p>";
 }
 
 function new_TestMember($sponsor_id) {
 	db_set_active('angelio_daten');
-	$result = db_query("SELECT Vorname FROM {tblNamen} ORDER BY rand() LIMIT 1;");
-	$vorname = $result->fetchCol();
-	$result = db_query("SELECT Nachname FROM {tblNamen} ORDER BY rand() LIMIT 1;");
-	$nachname = $result->fetchCol();
-	$username = substr(strtolower($vorname[0]), 0 , 3) . substr(strtolower($nachname[0]), 0 , 3) . rand(0,99);
+	$result = db_query("SELECT Vorname FROM {tblNamen} ORDER BY rand() LIMIT 1;")->fetchCol();
+	$vorname = $result;
+	$result = db_query("SELECT Nachname FROM {tblNamen} ORDER BY rand() LIMIT 1;")->fetchCol();
+	$nachname = $result;
 	$username = $sponsor_id . "_" . rand(0,9999);
-	$result = db_query("SELECT KundenID_online FROM {tbl_Kunden_Online} '" . $id . "' order by KundenID_online desc limit 1")->fetchCol();
+	$email = $username . "@angelio.at";
+
+	$result = db_query("SELECT KundenID_online FROM {tbl_Kunden_Online} order by KundenID_online desc limit 1")->fetchCol();
 	$member_id = $result[0] + 1;
 	
-	// Insert in table
-	try {
-		db_insert('tbl_Kunden_Online')
-			->fields(array('KundenID_online','SponsorID_O','bonuslevel','strUsername_O','strVName_O','strNName_O'))
-			->values(array(
-				'KundenID_online' => $member_id,
-				'SponsorID_O' => $sponsor_id,
-				'bonuslevel' => 2,
-				'strUsername_O' => $username,
-				'strVName_O' => $vorname[0],
-				'strNName_O' => $nachname[0],
-				'sponsored' => REQUEST_TIME))
-			->execute();
-		db_set_active();
-		return $member_id;
-	} catch (PDOException $e) { // username schon vergeben?
-		dpm($e->getMessage());
-		db_set_active();
-		return 0;
-	}
+	
+	db_insert('tbl_Kunden_Online')
+	->fields(array('KundenID_online','ReferrerID_O','bonuslevel','strUsername_O','strVName_O','strNName_O','strEmail_O','datAnlageInternet_O','ysnIsTest'))
+	->values(array(
+		'KundenID_online' => $member_id,
+		'ReferrerID_O' => $sponsor_id,
+		'bonuslevel' => 2,
+		'strUsername_O' => $username,
+		'strVName_O' => $vorname[0],
+		'strNName_O' => $nachname[0],
+		'strEmail_O' => $email,
+		'datAnlageInternet_O' => date("Y-m-d H:i:s", time()),
+		'ysnIsTest' => 1
+	))
+	->execute();
+	db_set_active();
+	return $member_id;
 }
 
  function angelio_TestInsert($sponsor_id, $anz){
@@ -1105,10 +1203,103 @@ function new_TestMember($sponsor_id) {
 			$next_id = $sponsor_id;
 		}
 		$member_id = new_TestMember($next_id);
+
 		angelio_inMatrix($member_id, $next_id);
 	}
-	$bonuslevels = array();
-	$output = angelio_downline_tree($statistik,$bonuslevels,1,1,1);
+
+	$statistik = array();
+	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILVER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+	$output = angelio_downline_tree($statistik, $bonuslevels, 1, 1,1,true,9);
 	
 	return $output;
+}
+ 
+function angelio_vertraege($uid) {
+global $user;
+	
+	if($uid!='0') {
+		$userdata = angelio_get_userdata($uid);
+	} else {
+		$uid = $user->uid;
+		$userdata = angelio_get_userdata($uid);
+	}
+
+	drupal_set_title('Verträge von ' . $userdata['strVName_O']);
+	
+	db_set_active('angelio_daten');
+	
+	$output = "<hr><br><h3>Meine Vertr&auml;ge:</h3>";	
+	
+	$sql = "SELECT * FROM {tbl_Vertraege_online} vt LEFT JOIN {tbl_Produkte_Online} pr ON vt.ProduktID=pr.ProduktID WHERE ysnStorniert='0' AND KundenID=" . $uid;
+	$result = db_query($sql);	
+	
+	if ($result) {
+  		$output .= '<table id="tblCommissionVertraege"><tr><th class="tblCommissionCol1">Produkt</th><th class="tblCommissionCol2">Versicherungsbestätigung</th><th class="tblCommissionCol3">Abschluss</th><th class="tblCommissionCol4">Vertrag</th><tr>';
+		while ($row = $result->fetchAssoc()) {
+			// wurde die Polizze schon erweitert?
+			$sql = "SELECT * FROM {tbl_Vertraege_Status} WHERE Polizzennummer='" . $row['Polizzennummer'] . "' AND datErweitert<>'0'";
+			$erweitert = db_query($sql)->fetchAssoc();			
+			if (!is_null($erweitert['Polizzennummer'])) {
+			$output .= '<tr><td class="tblCommissionCol1">' . $row['strProduktbezeichnung'] . '</td><td class="tblCommissionCol2"><a href="/polizze/' . $uid . '/' . $row['Polizzennummer'] . '">' . $row['Polizzennummer'] . '</a></td><td class="tblCommissionCol3">' . fdate($row["datAbschluss"],"d") . '.' . fdate($row["datAbschluss"],"m") . '.' . fdate($row["datAbschluss"],"Y") . '</td><td><form class="vertrag kuendigen" title="Den Vertrag kündigen..." action="/kuendigen/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" value="kündigen..."></form></td></tr>';
+			} else {
+			$output .= '<tr><td class="tblCommissionCol1">' . $row['strProduktbezeichnung'] . '</td><td class="tblCommissionCol2"><a href="/polizze/' . $uid . '/' . $row['Polizzennummer'] . '">' . $row['Polizzennummer'] . '</a></td><td class="tblCommissionCol3">' . fdate($row["datAbschluss"],"d") . '.' . fdate($row["datAbschluss"],"m") . '.' . fdate($row["datAbschluss"],"Y") . '</td><td><form class="vertrag kuendigen" title="Den Vertrag kündigen..." action="/kuendigen/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" value="kündigen..."></form><form class="vertrag erweitern" action="/erweitern/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" title="Den Vertrag erweitern..." value="erweitern..."></form></td></tr>';				
+			}
+		}
+		$output .= '</table>';
+	} else {
+		$output .= 'Ihre Verträge werden erst generiert und sollten innerhalb von 48 Stunden sichtbar sein.';
+	}
+	db_set_active();
+			
+	$output .= "<hr><br><h3>Meine Dokumente:</h3>";
+	$output .= "<table><tr><td>";	
+	$output .= "<a href='/downloads/AIG_AUVB_2005_extern.pdf' target='_blank'>AIG Allg. Unfallversicherungsbedingungen (AUVB 2005)</a><br>"; 
+	$output .= "<a href='/downloads/AIG_Progressionstabelle.pdf' target='_blank'>AIG Progressionstabelle</a><br>";
+	$output .= "<a href='/downloads/Datenschutzrichtlinie.pdf' target='_blank'>Datenschutzrichtlinie</a><br>";
+	$output .= "<a href='/downloads/Widerrufsbelehrung.pdf' target='_blank'>Widerrufsbelehrung</a><br>";
+	$output .= "<a href='/downloads/AGBangelio.pdf' target='_blank'>Allgemeine Bedingungen der Mitgliederwerbung</a><br>";
+		
+	$output .= "</td><td>";
+	$output .= "<form class='schadenbutton' action='/schaden'><input type='submit' title='Einen Unfall melden...' value='Einen Unfall melden...'></form>";
+	$output .= "</td></tr></table>";	
+	
+	return $output; 
+}
+ 
+function angelio_unfall_polizze($pid) {
+global $user;
+	
+	db_set_active('angelio_daten');
+	$sql="SELECT * FROM {tbl_Vertraege_online} v LEFT JOIN {tbl_Kunden_Online} k on v.KundenID = k.KundenID_online LEFT JOIN {tbl_Produkte_Online} p on v.ProduktID = p.ProduktID WHERE v.Polizzennummer='" . $pid . "'";
+	$row = db_query($sql)->fetchAssoc();
+	db_set_active();
+
+	drupal_set_title('angelio Versicherungsbestätigung  '. $pid );
+		
+	return theme('unfall_polizze', array('userdata' => $row));
+}
+
+
+function angelio_preprocess_unfall_polizze(&$variables) {
+  // $userdata = $variables;
+}
+
+function send_pdf_mit_email($filename, $path) {
+// $path ist z.B.: "/printpdf/polizze/" . $userdata['KundenID_online'] ."/" . $userdata['Polizzennummer_O']; 
+
+  module_load_include('inc', 'print_pdf', 'print_pdf.pages');  // require print_pdf.pages.inc
+
+  // set up email
+  $recipients[] = "email@example.com";
+  $subject = "Your PDF is attached";
+  $body = '<p>Your PDF is attached</p>';
+
+  $attachments[] = array(   // attach ticket
+    'filecontent' => print_pdf_generate_path($path),  // call the print_pdf function to generate PDF content string
+    'filemime' => 'application/pdf',
+    'filename' => $filename,
+  );
+
+  // send email
+  mimemail( $settings['from'], $recipients, $subject, $body, FALSE, array(), drupal_html_to_text(decode_entities($body)), $attachments );
 }
