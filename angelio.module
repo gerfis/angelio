@@ -1,0 +1,1114 @@
+<?php
+
+require_once('user-forms.inc');
+
+// $Id$
+global $base_url;
+global $user;
+
+
+// Username und Vorname an Javascript übergeben:
+
+/*
+ 	// gerfis: geht in D7 einfach nicht
+	$uid = $user->uid;
+	$userdata = angelio_get_userdata($uid);
+	$angelio_settings = array(
+		'username' => $userdata['strUsername_O'],
+		'vorname' => $userdata['strVName_O']
+	);	
+
+	drupal_add_js(array('angelio' => $angelio_settings), 'setting');
+*/
+
+// include IBAN test library
+  $path = function_exists('libraries_get_path') ? libraries_get_path('php-iban') : 'sites/all/libraries/php-iban';
+  if (!include($path . '/php-iban.php')) {
+  }
+ 
+
+function angelio_get_userdata($uid) {
+	db_set_active('angelio_daten');
+	$userdata = db_query("SELECT * FROM {tbl_Kunden_Online} WHERE KundenID_online='" . $uid . "'")->fetchAssoc();
+	db_set_active(); 
+	return $userdata;
+}
+
+function angelio_init() {
+    global $user;
+	// eingeloggten Benutzer umleiten, wenn er versucht sich zu registrieren
+	if (isset($_REQUEST['q'])) { 
+		if ($_REQUEST['q'] == 'user/register' && $user->uid > 0)
+	    {
+	        drupal_goto('user');
+	    }
+	}
+    drupal_add_css(drupal_get_path('module', 'angelio') . '/angelio.css');
+    global $base_path;
+    drupal_add_js("
+$(document).ready(function() {
+$('#angelio img').click(function() {
+  $.get('http://" . $_SERVER['HTTP_HOST'] . $base_path . "?q=tree/get/'+$(this).attr('title'));
+  window.setTimeout('location.reload()', 500);
+});
+});", 'inline');
+
+    drupal_add_css(drupal_get_path('module', 'angelio') . '/tree/tree.css');
+	drupal_add_js(drupal_get_path('module', 'angelio') . '/tree/tree.js');
+	drupal_add_js(drupal_get_path('module', 'angelio') . '/tree/ajax.js');
+}
+
+
+function angelio_permission() {
+	  return array(
+    'access own downline' => array(
+      'title' => t('Access own Downline'),
+    ),
+    'access all downlines' => array(
+      'title' => t('Access all Downlines'),
+    ),
+     'access own commission' => array(
+      'title' => t('Access own Commission'),
+    ),
+    'access all commissions' => array(
+      'title' => t('Access all Commissions'),
+    ),
+     'access own polizzen' => array(
+      'title' => t('Access own Polizzen'),
+    ),
+    'access all polizzen' => array(
+      'title' => t('Access all Polizzen'),
+    ),
+    'access own kontoauszug' => array(
+      'title' => t('Access own Kontoauszug'),
+    ),
+    'access all kontoauszug' => array(
+      'title' => t('Access all Kontoauszug'),
+    ),
+  );
+}
+
+
+
+function fdate($datetimestring = '1970-01-01 00:00:00', $format = 'U') {
+  // Create a datetime object, return it formatted
+  // If you want to give credit for this somewhere, thanks.
+  // You really don't have to though; this is kinda obvious
+  $dt = new DateTime($datetimestring);
+  return $dt->format($format);
+} 
+
+
+function angelio_mail($key, &$message, $params) {
+  switch ($key) {
+    case 'kuendigen':
+      // note: data can be passed to this function in the $params array
+      $message['subject'] = 'angelio Kündigung';
+      $message['body'] = "Hallo " . $params['Vorname'] . "!\n\nDein Vertrag mit der AIG-Nummer " . $params['Polizze'] . " wird gekündigt.\n\nDein angelio Team.";
+      break;    
+    case 'erweitern':
+      // note: data can be passed to this function in the $params array
+      $message['subject'] = "angelio Vertragserweiterung";
+      $message['body'] = "Hallo " . $params['Vorname'] . "!\n\nDein Vertrag mit der AIG-Nummer " . $params['Polizze'] . " wird erweitert.\n\nDein angelio Team.";
+      break;
+    case 'upline':
+      // note: data can be passed to this function in the $params array
+      $message['subject'] = "Deine angelio Downline wächst!";
+      $body = "Hallo " . $params['Uplinename'] . "!\n\nGratuliere, du hast ein neues Mitglied in deiner Downline bekommen:\n\n";
+	  $body .= "Sponsor: ". $params['Sponsorname']. "\n\n";
+	  $body .= "Neues Mitglied: ". $params['Neuervname']. " " . $params['Neuernname']. "\n";
+	  $body .= "Username: ". $params['Neueruser']. "\n\n";
+	  $body .= "\n\nDenk daran, jedes neue Mitglied kann für einen Wachstumsschub in Deiner gesamten Downline verantwortlich sein.\nAlso informiere so viele Menschen wie möglich über unseren Verein, um Deinen Nebenverdienst zu erhöhen.";
+      $body .= "\n\nDein angelio Team.";
+      $message['body'] = $body;
+      break;	  
+   case 'neuer':
+      $message['subject'] = "Neue Anmeldung bei angelio: " . $params['Neueruser'];
+      $body = "Sponsor: " . $params['Sponsorname']. "\n\n";
+	  $body .= "Neues Mitglied: ". $params['Neuervname']. " " . $params['Neuernname']. "\n";
+	  $body .= "Username: ". $params['Neueruser']. "\n\n";
+      $message['body'] = $body;
+      break;	    
+  }
+}
+
+
+function angelio_menu() {
+    $items = array();
+	
+    $items['angelio_admin'] = array(
+        'title' => 'angelio Administration',
+        'page callback' => 'angelio_admin',
+        'access arguments' => array('access all downlines'),
+        'type' => MENU_CALLBACK,
+    );
+		
+    $items['join/%'] = array(
+        'title' => 'Register',
+        'page callback' => 'angelio_register',
+        'page arguments' => array(1),
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    );
+	
+    $items['join'] = array(
+        'title' => 'join',
+        'page callback' => 'angelio_join',
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    );
+    
+  $items['downline/%'] = array(
+    'title' => 'My Downline',
+    'description' => 'My angelio downline',
+    'page callback' => 'angelio_mydownline',
+    'page arguments' => array(2),
+    'access arguments' => array('access all downlines'),
+  );
+  
+  $items['downline'] = array(
+    'title' => 'My Downline',
+    'description' => 'My angelio downline',
+    'page callback' => 'angelio_mydownline',
+    'page arguments' => array(2),    
+    'access arguments' => array('access own downline'),
+  );
+      	
+  $items['matrix/%'] = array(
+    'title' => 'My 3x9 Matris',
+    'description' => 'My angelio matrix',
+    'page callback' => 'angelio_mymatrix',
+    'page arguments' => array(2),
+    'access arguments' => array('access all downlines'),
+  );
+  
+  $items['matrix'] = array(
+    'title' => 'My 3x9 Matrix',
+    'description' => 'My angelio matrix',
+    'page callback' => 'angelio_mymatrix',
+    'page arguments' => array(2),    
+    'access arguments' => array('access own downline'),
+  );
+  
+  $items['angelio/position/%/%'] = array(
+    'title' => 'New Position',
+    'description' => 'Next free position',
+    'page callback' => 'angelio_TestInsert',
+    'page arguments' => array(2,3),
+    'access arguments' => array('administer site configuration'),
+  );
+
+
+    $items['angelio/resettests'] = array(
+        'title' => 'Testdaten gelöscht',
+        'page callback' => 'angelio_resettests',
+        'access arguments' => array('administer site configuration'),
+        'type' => MENU_CALLBACK,
+    );
+	
+/*    
+
+    $items['provision'] = array(
+        'title' => 'Meine angelio Abrechnung',
+        'page callback' => 'angelio_commission',
+        'page arguments' => array('0'),                       
+        'access arguments' => array('access own commission'),
+        'type' => MENU_CALLBACK,
+    );
+    
+        $items['provision/%'] = array(
+        'title' => 'Meine angelio Abrechnung',
+        'page callback' => 'angelio_commission',
+        'page arguments' => array(1),               
+        'access arguments' => array('access all commissions'),
+        'type' => MENU_CALLBACK,
+    );	
+
+    $items['vertraege'] = array(
+        'title' => 'Meine angelio Verträge',
+        'page callback' => 'angelio_vertraege',
+        'page arguments' => array('0'),                       
+        'access arguments' => array('access own commission'),
+        'type' => MENU_CALLBACK,
+    );
+    
+        $items['vertraege/%'] = array(
+        'title' => 'Meine angelio Verträge',
+        'page callback' => 'angelio_vertraege',
+        'page arguments' => array(1),               
+        'access arguments' => array('access all commissions'),
+        'type' => MENU_CALLBACK,
+    );	
+		
+        $items['polizze/%'] = array(
+        'title' => 'Meine angelio Polizze',
+        'page callback' => 'angelio_unfall_polizze',
+        'page arguments' => array(2),               
+        'access arguments' => array('access own polizzen'),
+        'type' => MENU_CALLBACK,
+    );
+	
+    $items['konto'] = array(
+        'title' => 'Mein angelio Kontoauszug',
+        'page callback' => 'angelio_kontoauszug',
+        'page arguments' => array('0'),                       
+        'access arguments' => array('access own kontoauszug'),
+        'type' => MENU_CALLBACK,
+    );
+    
+        $items['konto/%'] = array(
+        'title' => 'Mein angelio Kontoauszug',
+        'page callback' => 'angelio_kontoauszug',
+        'page arguments' => array(1),               
+        'access arguments' => array('access all kontoauszug'),
+        'type' => MENU_CALLBACK,
+    );
+
+        $items['mein-angelio'] = array(
+        'title' => 'Mein angelio',
+        'page callback' => 'angelio_meinangelio',
+        'page arguments' => array(0),               
+        'access arguments' => array('access own downline'),
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['visitenkarten'] = array(
+        'title' => 'Meine angelio Visitenkarten',
+        'page callback' => 'angelio_visitenkarten',
+        'page arguments' => array('0'),                       
+        'access arguments' => array('access own downline'),
+        'type' => MENU_CALLBACK,
+    );
+	
+        $items['visitenkarten/%'] = array(
+        'title' => 'Meine angelio Visitenkarten',
+        'page callback' => 'angelio_visitenkarten',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own downline'),
+        'type' => MENU_CALLBACK,
+    );
+	
+    $items['schaden'] = array(
+        'title' => 'angelio Unfallschadensmeldung',
+        'page callback' => 'angelio_schaden',
+        'page arguments' => array('0'),                       
+        'access arguments' => array('access own downline'),
+        'type' => MENU_CALLBACK,
+    );
+	
+    $items['flyer'] = array(
+        'title' => 'Mein angelio Flyer',
+        'page callback' => 'angelio_flyer',
+        'page arguments' => array('0'),                       
+        'access arguments' => array('access own downline'),
+        'type' => MENU_CALLBACK,
+    );
+	
+        $items['flyer/%'] = array(
+        'title' => 'Mein angelio Flyer',
+        'page callback' => 'angelio_flyer',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own downline'),
+        'type' => MENU_CALLBACK,
+    );
+	
+        $items['kuendigen/%'] = array(
+        'title' => 'Vertrag kündigen',
+        'page callback' => 'angelio_kuendigen',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own polizzen'),
+        'type' => MENU_CALLBACK,
+    );
+	
+        $items['kuendigen/%/jetzt'] = array(
+        'title' => 'Vertrag jetzt kündigen',
+        'page callback' => 'angelio_kuendigen_jetzt',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own polizzen'),
+        'type' => MENU_CALLBACK,
+    );
+	
+        $items['kuendigen/%/sofort'] = array(
+        'title' => 'Vertrag wird gekündigt',
+        'page callback' => 'angelio_kuendigen_sofort',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own polizzen'),
+        'type' => MENU_CALLBACK,
+    );
+	
+        $items['erweitern/%'] = array(
+        'title' => 'Leistung erweitern',
+        'page callback' => 'angelio_erweitern',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own polizzen'),
+        'type' => MENU_CALLBACK,
+    );
+
+        $items['erweitern/%/jetzt'] = array(
+        'title' => 'Vertrag jetzt erweitern',
+        'page callback' => 'angelio_erweitern_jetzt',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own polizzen'),
+        'type' => MENU_CALLBACK,
+    );
+
+        $items['erweitern/%/sofort'] = array(
+        'title' => 'Vertrag wird erweitert',
+        'page callback' => 'angelio_erweitern_sofort',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own polizzen'),
+        'type' => MENU_CALLBACK,
+    );
+					
+	// Pager Test items
+	$items['test/pager'] = array(
+   	  'title' => 'Konto test pager',
+	  'type' => MENU_CALLBACK,
+	  'page callback' => 'angelio_test_pager',
+	  'access arguments' => array('access content')
+	); 	 
+	  
+	$items['konto/callback'] = array(
+	  'title' => 'Konto Pager Callback',
+	  'type' => MENU_CALLBACK,
+	  'page callback' => '_angelio_konto_pager_callback',
+	  'access arguments' => array('access content'),
+	);
+	
+    $items['angelio_sync_shop'] = array(
+        'title' => 'angelio Shop Synchronisation',
+        'page callback' => 'angelio_sync_shop',
+        'access arguments' => array('access all downlines'),
+        'type' => MENU_CALLBACK,
+    );
+*/
+		
+	return $items;
+}
+
+function angelio_admin() {
+	$output = "<form action='/angelio_sync_shop'><input type='submit' value='Den Shop synchronisieren'></form>";
+	
+	return $output;
+}
+
+function angelio_join() {
+	$_SESSION['sponsor_uid'] = "";
+	$_SESSION['sponsor_name'] = "";
+	drupal_goto('user/register');
+}
+
+/*
+function angelio_theme() {
+  return array(
+     'user_register' => array(
+      'template' => 'user-register-form',
+      'arguments' => array('form' => NULL),
+   	), 
+   	'unfall_polizze' => array(
+      'template' => 'unfall-polizze',
+      'arguments' => array('userdata' => NULL),	
+	), 
+  'user_profile_form' => array(
+    'arguments' => array('form' => NULL),
+    'template' => 'user-profile-edit',
+    'render element' => 'form',
+    ),
+  );
+}
+
+ * 
+ */
+function angelio_register($uid) {
+	if (angelio_check_sponsor($uid)) {
+		if (arg(2) == "") {
+			drupal_goto('<front>');
+		} else if (arg(2) == "register") {
+			drupal_goto('user/register');
+		} else {
+			drupal_goto(arg(2));
+		}			
+	} else {
+		return '<br>' . t('User "@uid" unknown.', array('@uid' => $uid));
+	} 
+}
+
+function angelio_check_sponsor($uid) {
+	$userinfo = db_query("SELECT uid, name FROM {users} WHERE uid='" . $uid . "'")->fetchAssoc();
+	if ($userinfo['uid']) {
+		$_SESSION['sponsor_uid'] = $userinfo['uid'];
+		$_SESSION['sponsor_name'] = $userinfo['name'];
+		setcookie('sponsor', $userinfo['name'], time() + 3600 * 24 * 180, '/user/register');
+		//print_r($_COOKIE['sponsor']);		
+		return true;
+	} else {
+		$userinfo = db_query("SELECT uid, name FROM {users} WHERE name='" . $uid . "'")->fetchAssoc();
+		if ($userinfo['name']) {
+			$_SESSION['sponsor_uid'] = $userinfo['uid'];
+			$_SESSION['sponsor_name'] = $userinfo['name'];
+			setcookie('sponsor', $userinfo['name'], time() + 3600 * 24 * 180, '/user/register');		
+			return true;
+		} else {
+			$_SESSION['sponsor_uid'] = '';
+			$_SESSION['sponsor_name'] = '';
+			return false;
+		}
+	}
+}
+
+function angelio_user_delete($account) {
+	// Benutzer aus boucado matrix löschen
+	db_set_active('angelio_daten');
+
+	$num_deleted = db_delete('tbl_Kunden_Online')
+		->condition('KundenID_online', $account->uid)
+		->execute();
+
+	db_set_active();	
+	
+	drupal_set_message("Der Benutzer wurde aus der angelio Matrix gelöscht.");
+
+}
+
+
+
+function print_pre($p,$titel="") {
+	if ($titel<>"") {print $titel . ": ";} 
+	print "<pre>";
+	print_r($p);
+	print "</pre>";
+}
+
+
+function angelio_user_presave(&$edit, $account, $category) {
+	// Benutzer bei der Aktivierung in die Matrix platzieren:
+	
+  if ($account->uid // user is not new
+      && $account->status === "0" && $edit['status']==1) { // user is being activated
+
+    // Benutzer Rolle setzen
+	if ($role = user_role_load_by_name('FREE')) {
+        user_multiple_role_edit(array($account->uid), 'add_role', $role->rid);
+		drupal_set_message("Dem Benutzer wurde der Status 'FREE' zugeteilt.");
+      }    
+    
+ 	// Member in Matrix platzieren:
+    $member = angelio_get_userdata($account->uid);
+	angelio_inMatrix($member['KundenID_online'], $member['ReferrerID_O']);
+	drupal_set_message("Der Benutzer wurde in der Matrix platziert.");
+	// passiert jetzt erst beim Bezahlen
+
+  }
+}
+
+
+function angelio_get_username($member_id) {
+// Member holen
+	db_set_active('angelio_daten');
+	$query = db_select('tbl_Kunden_Online', 'm');
+	$query
+		->fields('m')
+  		->condition('m.KundenID_online', $member_id, '=')
+  		->range(0, 1);
+	$result = $query->execute();
+	db_set_active();
+	
+	foreach ($result as $record) {
+  		$thisuser = $record;
+	}	
+	return $thisuser->strUsername_O;
+}
+
+function angelio_get_userobject($username) {
+global $user;
+	
+	if ($username=="") {$username = $user->name;}
+	  // For convenience, we'll allow user ids as well as full user objects.
+	if (is_numeric($username)) {
+		$member = user_load($username);
+		$username = $member->name; 
+	}
+
+	if ($username=="Demo") {
+
+		$thisuser = new stdClass();
+		$thisuser->member_id=0;
+		$thisuser->username="demo";
+		$thisuser->first_name="Demo";
+		$thisuser->last_name="Demo";
+		$thisuser->street="Demostreet";
+		$thisuser->postal="10000";
+		$thisuser->city="Democity";
+		$thisuser->country="Democountry";
+		$thisuser->phone="123456";
+		$thisuser->email="demo@demo.com";
+		$thisuser->sponsor = 'angelio';
+		$thisuser->sponsor_id = '1';
+		$thisuser->sponsor_first_name = 'ANGELIO';
+		$thisuser->sponsor_last_name = 'Admin';
+		$thisuser->upline = 'angelio';
+		$thisuser->upline_id = '1';
+		$thisuser->upline_first_name = 'ANGELIO';
+		$thisuser->upline_last_name = 'Admin';	
+		$thisuser->bonuslevel = 1;	
+		// Ablaufdaten holen
+		$thisuser->status = boucado_is_user_active($thisuser);
+		
+		return $thisuser;
+	}
+
+// Member holen
+	db_set_active('angelio_daten');
+	$query = db_select('tbl_Kunden_Online', 'm');
+	$query
+		->fields('m')
+  		->condition('m.strUsername_O', $username, '=')
+  		->range(0, 1);
+	$result = $query->execute();
+	db_set_active();
+	
+	foreach ($result as $record) {
+		$thisuser = new stdClass();
+		$thisuser->member_id=$record->KundenID_online;
+		$thisuser->username=$record->strUsername_O;
+		$thisuser->titel=$record->strTitel_O;		
+		$thisuser->first_name=$record->strVName_O;
+		$thisuser->last_name=$record->strNName_O;
+		$thisuser->street=$record->strAnschrift_O;
+		$thisuser->postal=$record->strPLZ_O;
+		$thisuser->city=$record->strOrt_O;
+		$thisuser->country=$record->strLand_O;
+		$thisuser->phone=$record->strTelefon_O;
+		$thisuser->email=$record->strEmail_O;
+		$thisuser->iban=$record->strIban_O;
+		$thisuser->sponsor_id = $record->ReferrerID_O;
+		$thisuser->upline_id = $record->SponsorID_O;		
+	}
+
+
+ // Sponsor holen:
+ 	if (isset($thisuser) && ($thisuser->member_id > 1)) {
+
+	 	db_set_active('angelio_daten');
+	 	$query = db_select('tbl_Kunden_Online', 'm');
+		$query
+			->fields('m')
+	  		->condition('m.KundenID_online', $thisuser->sponsor_id, '=')
+	  		->range(0, 1);
+		$result = $query->execute();
+	
+		db_set_active();
+	
+		foreach ($result as $record) {
+	  		$sponsor = $record;
+		}
+		
+		$thisuser->sponsor = $sponsor->strUsername_O;
+		$thisuser->sponsor_first_name = $sponsor->strVName_O;
+		$thisuser->sponsor_last_name = $sponsor->strNName_O;
+		$thisuser->sponsor_bonuslevel = $sponsor->bonuslevel;
+	
+	} else { // der Admin
+		$thisuser->sponsor = 'angelio';
+		$thisuser->sponsor_id = '1';
+		$thisuser->sponsor_first_name = 'ANGELIO';
+		$thisuser->sponsor_last_name = 'Admin';
+		$thisuser->sponsor_bonuslevel = 5;
+	}
+
+ // Upline holen
+ 
+  	if ($thisuser->member_id > 1) { // nicht der Admin
+	 	db_set_active('angelio_daten');
+	 	$query = db_select('tbl_Kunden_Online', 'm');
+		$query
+			->fields('m')
+	  		->condition('m.KundenID_online', $thisuser->member_id, '=')
+			->condition('m.SponsorID_O','0','>')
+	  		->range(0, 1);
+		$result = $query->execute();
+
+		if ($result->rowCount()) {	
+			foreach ($result as $record) {
+		  		$upline_id = $record;
+			}
+		
+		 	$query = db_select('tbl_Kunden_Online', 'm');
+			$query
+				->fields('m')
+		  		->condition('m.	KundenID_online', $upline_id->SponsorID_O, '=')
+		  		->range(0, 1);
+			$result = $query->execute();
+		
+			foreach ($result as $record) {
+		  		$upline = $record;
+			}
+			
+			$thisuser->upline = $upline->strUsername_O;
+			$thisuser->upline_first_name = $upline->strVName_O;
+			$thisuser->upline_last_name = $upline->strNName_O;
+			$thisuser->upline_bonuslevel = $upline->bonuslevel;
+		} else { // noch nicht platzert
+			$thisuser->upline = '';
+			$thisuser->upline_id = -1;
+			$thisuser->upline_first_name = '';
+			$thisuser->upline_last_name = '';
+			$thisuser->upline_bonuslevel = 0;			
+		}
+		db_set_active();	
+	} else { // der Admin
+		$thisuser->upline = 'angelio';
+		$thisuser->upline_id = '1';
+		$thisuser->upline_first_name = 'BOUCADO';
+		$thisuser->upline_last_name = 'Admin';
+		$thisuser->upline_bonuslevel = 5;
+	}
+
+	// Ablaufdaten holen
+	$thisuser->status = angelio_is_user_active($thisuser);
+	
+	return $thisuser;
+}
+
+
+function angelio_is_user_active(&$thisuser) {
+	
+	// alle mal weiß
+	$thisuser->status = "white";
+	return "white";
+	
+	db_set_active('angelio_daten');
+
+	$sql = "SELECT DATE(date_time) from payments where member_id = " . $thisuser->member_id . " ORDER BY date_time DESC LIMIT 1";
+	$payments = db_query($sql)->fetchCol();
+		
+
+	if (!$payments) {
+		$thisuser->last_payment = "No payment made";
+		$thisuser->expiration_date = "No payment made";
+		$thisuser->tolerance_date = "No payment made";
+		$thisuser->tolerance_over_date = "No payment made";			
+		db_set_active();
+		return "red";
+	}
+	$last_payment = $payments[0];
+	
+	$sql = "SELECT the_key, the_val FROM boucado_settings WHERE the_key IN ('PayInterval','PayTolerance','PayToleranceOver')";
+	$tolerance = db_query($sql)->fetchAllKeyed();
+	$payment_interval = $tolerance['PayInterval'];
+	$tolerance_days = $tolerance['PayTolerance'];;
+	$tolerance_over_days = $tolerance['PayToleranceOver'];
+
+	db_set_active();
+
+	$last_payment_date= new DateTime($last_payment);
+	$last_payment_date_string = $last_payment_date->format('d.m.Y');
+	
+	$last_payment_date->add(new DateInterval("P" . $payment_interval . "D"));
+	$expiration_date_string = $last_payment_date->format('d.m.Y');
+	
+	$last_payment_date->add(new DateInterval("P" . $tolerance_days . "D"));
+	$tolerance_date_string = $last_payment_date->format('d.m.Y');	
+		
+	$last_payment_date->add(new DateInterval("P" . $tolerance_over_days . "D"));
+	$tolerance_over_date_string = $last_payment_date->format('d.m.Y');
+			
+	$today = new DateTime(date(''));
+	
+	$expiration_date = new DateTime($expiration_date_string);
+	$expiration_date_diff = $today->diff($expiration_date);
+	
+	$is_expired = (int)$expiration_date_diff->format("%r%a");
+	
+	$tolerance_date = new DateTime($tolerance_date_string);
+	$tolerance_date_diff = $today->diff($tolerance_date);
+	
+	$is_in_tolerance = (int)$tolerance_date_diff->format("%r%a");
+	
+	$tolerance_over_date = new DateTime($tolerance_over_date_string);
+	$tolerance_over_date_diff = $today->diff($tolerance_over_date);
+	
+	$is_outof_tolerance = (int)$tolerance_over_date_diff->format("%r%a");
+
+	$thisuser->last_payment = $last_payment_date_string;
+	$thisuser->expiration_date = $expiration_date_string;
+	$thisuser->tolerance_date = $tolerance_date_string;
+	$thisuser->tolerance_over_date = $tolerance_over_date_string;
+	
+	if ($is_outof_tolerance <0) {
+		$thisuser->status = "red";
+		return "red";
+	} else 
+		if (($is_outof_tolerance >= 0) && ($is_in_tolerance <= 0)) {
+			$thisuser->status = "yellow";
+			return "yellow";
+		} else 
+			if (($is_in_tolerance >= 0) && ($is_expired <= 0)) {
+				$thisuser->status = "green";
+				return "green";
+			} else {
+				$thisuser->status = "white";
+				return "white";
+			}
+}
+
+
+function angelio_mydownline($uid) {
+global $user;
+
+	if($uid!='') {
+		$userdata = angelio_get_userobject($uid);
+	} else {
+		$uid = $user->name;
+		$userdata = angelio_get_userobject($uid);
+	}	
+	
+	$statistik = array();
+	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILVER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+	$output = "";
+	
+	$tree = angelio_downline_tree($statistik, $bonuslevels, $userdata->member_id, $userdata->member_id,1,false,9);
+	
+	$levels = array('1' => 0, '2' => 0, '3' => 0, '4' => 0, '5' => 0, '6' => 0, '7' => 0, '8' => 0, '9' => 0);
+	$gesamt = 0;
+	
+	foreach ($statistik as $level) {
+		$levels[$level['level']] = $levels[$level['level']] + $level['count'];  
+		$gesamt += $level['count']; 
+	}
+	
+	for ($i = 1; $i < 10; $i++) {
+		$output .= "Level " . $i . ": " . $levels[$i] . "<br>";
+	}
+	$output .= "<p><b>" . t("Total") . ": ". $gesamt . "</b></p>";
+
+	$output .= "<h3>Bonuslevels:</h3>";
+	$output .= "FREE: " . $bonuslevels['FREE'] . "<br>";	
+	$output .= "BRONCE: " . $bonuslevels['BRONCE'] . "<br>";
+	$output .= "SILVER: " . $bonuslevels['SILVER'] . "<br>";
+	$output .= "GOLD: " . $bonuslevels['GOLD'] . "<br>";
+	$output .= "PLATIN: " . $bonuslevels['PLATIN'] . "<br>";
+	$output .= "<br><hr><br>";
+			
+	$output .= $tree;
+	
+	return $output;
+}
+
+function angelio_mymatrix($uid) {
+global $user;
+
+	if($uid!='') {
+		$userdata = angelio_get_userobject($uid);
+	} else {
+		$uid = $user->name;
+		$userdata = angelio_get_userobject($uid);
+	}	
+	
+		// Bis zu welcher Tiefe bekommt der Empfänger den Bonus?
+	db_set_active('angelio_daten');
+	$sql = "SELECT title, depth FROM tbl_Kunden_Online m, tblBonuslevels b WHERE m.bonuslevel = b.bid AND m.KundenID_online='" . $userdata->member_id . "'";
+	$levels = db_query($sql)->fetchAll();
+	$title = $levels[0]->title;
+	$depth = $levels[0]->depth;
+	db_set_active();
+	
+	$statistik = array();
+	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILVER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+	$output = "<h3>Bonuslevel: " . $title . "</h3>";
+	$output .= "<h3>" . t("Paylevels: ") . $depth . "</h3>";
+
+
+	$tree = angelio_downline_tree($statistik, $bonuslevels, $userdata->member_id, $userdata->member_id,1,true,$depth);
+	
+	$levels = array('1' => 0, '2' => 0, '3' => 0, '4' => 0, '5' => 0, '6' => 0, '7' => 0, '8' => 0, '9' => 0);
+	$gesamt = 0;
+	
+	foreach ($statistik as $level) {
+		$levels[$level['level']] = $levels[$level['level']] + $level['count'];  
+		$gesamt += $level['count']; 
+	}
+	
+	for ($i = 1; $i < 10; $i++) {
+		if ($i > $depth) {
+			$output .= "<span style='color:red;'>Level " . $i . ": " . $levels[$i] . "</span><br>";
+		} else {
+			$output .= "<span>Level " . $i . ": " . $levels[$i] . "</span><br>";
+		}
+	}
+	$output .= "<p><b>" . t("Total") . ": ". $gesamt . "</b></p>";
+	
+	$output .= "<h3>Bonuslevels:</h3>";
+	$output .= "BRONCE: " . $bonuslevels['BRONCE'] . "<br>";
+	$output .= "SILVER: " . $bonuslevels['SILVER'] . "<br>";
+	$output .= "GOLD: " . $bonuslevels['GOLD'] . "<br>";
+	$output .= "PLATIN: " . $bonuslevels['PLATIN'] . "<br>";
+	
+	$output .= "<br><hr><br>";
+		
+	$output .= $tree;
+	
+	return $output;
+}
+
+function angelio_downline_tree(&$statistik, &$bonuslevels, $uid, $sponsor_id, $level=1, $matrix=true, $depth) {
+	if ($level>9) {return;} // Abbruch nach 9 Leveln
+	// if ($sponsor_id==0) {return;} // Abbruch bei inaktiven Usern
+	
+	db_set_active('angelio_daten');
+
+	if ($matrix) { // 3x9 Matrix oder richtige Downline anzeigen?
+		$sql = "SELECT KundenID_online as member_id, bonuslevel, strUsername_O as username, strVName_O as first_name, strNName_O as last_name, ReferrerID_O as sponsor_id, SponsorID_O as host_id FROM {tbl_Kunden_Online} WHERE SponsorID_O=" . $uid . " ORDER by KundenID_online";
+	} else {
+		$sql = "SELECT KundenID_online as member_id, bonuslevel, strUsername_O as username, strVName_O as first_name, strNName_O as last_name, ReferrerID_O as sponsor_id, SponsorID_O as host_id FROM {tbl_Kunden_Online} WHERE ReferrerID_O=" . $uid . " ORDER by KundenID_online";		
+	}
+	$result = db_query($sql);
+	db_set_active();
+
+	$output = "";
+	$eigen = "";
+	$depthclass="";
+	if ($level > $depth) {
+		$depthclass=" depth";
+	}
+	if ($result->rowCount()) {
+		$count = $result->rowCount();
+		$statistik[] = array('level' => $level, 'count' => $count);
+		foreach ($result as $row) {
+			if ($sponsor_id == $row->sponsor_id) {$eigen = " eigen"; }
+			$member_status = angelio_is_user_active($row);
+			db_set_active('angelio_daten');
+			$sql = "SELECT title, depth FROM tbl_Kunden_Online m, tblBonuslevels b WHERE m.bonuslevel = b.bid AND m.KundenID_online='" . $row->member_id . "'";
+			$levels = db_query($sql)->fetchAll();
+			$bonustitle = $levels[0]->title;
+			$bonuslevels[$bonustitle] = $bonuslevels[$bonustitle] + 1; 
+			db_set_active();
+			$output .= '<span class="status-' . $member_status . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . ' ' . $bonustitle . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name . ' (' . substr($bonustitle,0,1) . ')</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
+  		}
+ 		db_set_active();
+		return $output;
+	} else {
+		db_set_active();
+		return "";
+	}
+}
+
+function angelio_inMatrix($member_id, $sponsor_id) {
+
+	$nextone = array();
+	$nextLevelIds = getNextLevelIds($nextone, $sponsor_id);
+	usort($nextone, 'compareIds'); // zuerst von links nach rechts sortieren
+	usort($nextone, 'compareCount');  // dann nach dem wenigsten downlines
+	$host_id = $nextone[0]['uid'];
+	
+	db_set_active('angelio_daten');
+	// Dem Member die host_id eintragen
+	db_update('tbl_Kunden_Online')
+		->fields(array('SponsorID_O' => $host_id))
+		->condition('KundenID_online', $member_id, '=')
+		->execute();
+
+	// Dem Host das Datum eintragen
+	db_update('tbl_Kunden_Online')
+		->fields(array('datLast_hosted' => date("Y-m-d H:i:s", time())))
+		->condition('KundenID_online',$host_id,'=')
+		->execute();
+	
+	db_set_active();	
+	
+	update_upline($member_id);
+
+}
+
+function getFirstLevelCount($id) {
+	db_set_active('angelio_daten');
+	$result = db_query("SELECT count(*) FROM {tbl_Kunden_Online} WHERE SponsorID_O = '" . $id . "'")->fetchCol();
+	db_set_active();
+	return $result[0];
+}
+
+function getSecondLevelCount($id){
+	db_set_active('angelio_daten');
+	
+	// mal alle direkten downlines holen:
+	$result = db_query("SELECT KundenID_online as member_id FROM {tbl_Kunden_Online} WHERE SponsorID_O = '" . $id . "' order by KundenID_online");
+
+	if ($result->rowCount()) {
+		$ids_anz = array();
+		$anzahlen = array();
+		$host_ids = '';
+		$i = 0;
+		$max_anz = 0;
+		$min_anz = 0;
+		foreach ($result as $row) {
+			// wie viele downlines haben die in der ersten Reihen schon?
+			$result1 = db_query("SELECT SponsorID_O as host_id, count(*) as anz FROM {tbl_Kunden_Online} WHERE SponsorID_O = '" . $row->member_id . "' group by SponsorID_O order by count(*), SponsorID_O");
+			if ($result1->rowCount()) { // wenn überhaupt, dann
+				$anz = $result1->fetchCol(1);
+				$host_id = $result1->fetchCol(0);
+				$ids_anz[] = array('host_id' => $row->member_id, 'anz' => $anz[0]);
+				$anzahlen[] = $anz[0];
+				$host_ids .= $row->member_id . ',';
+				$i++;
+			} else {
+				$anzahlen[] = 0;
+				$ids_anz[] = array('host_id' => $row->member_id, 'anz' => 0);
+			}
+		}
+		if ($i > 0) {
+			$max_anz = max($anzahlen);
+			$min_anz = min($anzahlen);
+			$host_ids = substr($host_ids,0,strlen($host_ids)-1);
+			usort($ids_anz, 'compareHostIds'); // host_ids aufsteigend sortieren		
+			usort($ids_anz, 'compareHosts'); // nach Anzahl an downlines sortieren, absteigend
+		}
+	} else {
+		$ids_anz = NULL;
+		$min_anz = 0;
+		$max_anz = 0;
+	}
+	
+	db_set_active();
+	return array('ids_anz' => $ids_anz, 'host_ids' => $host_ids, 'max_anz' => $max_anz, 'min_anz' => $min_anz);
+}
+
+function getNextLevelIds(&$nextone, $sponsor_id) {
+	
+	$first_level_count = getFirstLevelCount($sponsor_id);
+	
+	if ($first_level_count < 3) { // erste Reihe ist noch nicht voll
+		$nextone[] = array('uid' => $sponsor_id);
+	} else {
+	
+		$second_level_counts = getSecondLevelCount($sponsor_id);
+		if ($second_level_counts['min_anz'] < 3) { // zweite Reihe ist noch nicht voll
+			$nextone[] = array('uid' => $second_level_counts['ids_anz'][0]['host_id']); // den, mit den wenigsten zurück geben
+		} else { // zweite Reihe ist voll, wer ist der Nächste? Wer hat noch nicht, wer will nochmal?
+			db_set_active('angelio_daten');	
+			// wer sind die 3 Kandidaten?
+			$result = db_query("SELECT KundenID_online as member_id FROM {tbl_Kunden_Online} WHERE KundenID_online IN (" . $second_level_counts['host_ids'] . ") order by datLast_hosted asc, KundenID_online");
+			$geschafft = 0;
+			foreach ($result as $row) {
+				$next_id = $result->fetchCol();
+				$first_level_count = getFirstLevelCount($next_id[0]);
+				if ($first_level_count < 3) {
+					$nextone[] = array('uid' => $next_id['0']);
+					$geschafft = 1;
+					db_set_active();
+					return;
+				}
+			}
+			if (!$geschafft) {
+				db_set_active('angelio_daten');
+				$result = db_query("SELECT KundenID_online as member_id FROM {tbl_Kunden_Online} WHERE KundenID_online IN (" . $second_level_counts['host_ids'] . ") ORDER by rand() LIMIT 1");
+				$next_id = $result->fetchCol();
+				db_set_active();
+				getNextLevelIds($nextone, $next_id[0]);				
+			}
+			
+	 	}
+	}
+}
+
+// Upline rekursiv bis zur 9. Ebene aktualisieren
+function angelio_upline($member_id, $level = 1) {
+	
+	if (($member_id == "0") || ($level > 9)) {
+		return; 
+	} else {
+		db_set_active('angelio_daten');
+		$result = db_query("SELECT SponsorID_O as host_id FROM {tbl_Kunden_Online} WHERE KundenID_online = " . $member_id);
+		$host = $result->fetchCol();
+		$host_id = $host[0];		
+		db_update('tbl_Kunden_Online')
+		->fields(array('datLast_downline' => date("Y-m-d H:i:s", time())))
+		->condition('KundenID_online',$host_id,'=')
+		->execute();
+		db_set_active();
+		update_upline($host_id, $level+1);		
+	}
+}
+
+function compareCount($a, $b)
+{
+  return $a['count'] - $b['count'];
+}
+
+function compareIds($a, $b)
+{
+  return $b['end'] - $a['end'];
+}
+
+function compareHosts($a, $b)
+{
+  return $a['anz'] - $b['anz'];
+}
+
+function compareHostIds($a, $b)
+{
+  return $b['host_id'] - $a['host_id'];
+}
+
+
+function angelio_resettests() {
+	db_set_active('angelio_daten');	
+	$result = db_query("DELETE FROM {tbl_Kunden_Online} WHERE KundenID_online > 1 OR KundenID_online=0");
+	db_set_active();
+	$statistik = array();
+	$bonuslevels = array();
+	$output = boucado_downline_tree($statistik,$bonuslevels,1,1,1);
+	return "<p>Testdaten gelöscht.</p>" . $output;
+}
+
+function new_TestMember($sponsor_id) {
+	db_set_active('angelio_daten');
+	$result = db_query("SELECT Vorname FROM {tblNamen} ORDER BY rand() LIMIT 1;");
+	$vorname = $result->fetchCol();
+	$result = db_query("SELECT Nachname FROM {tblNamen} ORDER BY rand() LIMIT 1;");
+	$nachname = $result->fetchCol();
+	$username = substr(strtolower($vorname[0]), 0 , 3) . substr(strtolower($nachname[0]), 0 , 3) . rand(0,99);
+	$username = $sponsor_id . "_" . rand(0,9999);
+	$result = db_query("SELECT KundenID_online FROM {tbl_Kunden_Online} '" . $id . "' order by KundenID_online desc limit 1")->fetchCol();
+	$member_id = $result[0] + 1;
+	
+	// Insert in table
+	try {
+		db_insert('tbl_Kunden_Online')
+			->fields(array('KundenID_online','SponsorID_O','bonuslevel','strUsername_O','strVName_O','strNName_O'))
+			->values(array(
+				'KundenID_online' => $member_id,
+				'SponsorID_O' => $sponsor_id,
+				'bonuslevel' => 2,
+				'strUsername_O' => $username,
+				'strVName_O' => $vorname[0],
+				'strNName_O' => $nachname[0],
+				'sponsored' => REQUEST_TIME))
+			->execute();
+		db_set_active();
+		return $member_id;
+	} catch (PDOException $e) { // username schon vergeben?
+		dpm($e->getMessage());
+		db_set_active();
+		return 0;
+	}
+}
+
+ function angelio_TestInsert($sponsor_id, $anz){
+	for ($i=1; $i <= $anz; $i++) { 	
+		if ($sponsor_id == -1) { // Sponsor aus DB holen, sonst den angegebenen $sponsor verwenden
+			db_set_active('angelio_daten');
+			$result = db_query("SELECT KundenID_online as member_id FROM {tbl_Kunden_Online} ORDER BY rand() LIMIT 1;");
+			$sponsor = $result->fetchCol();
+			$next_id = $sponsor[0];
+			db_set_active();
+		} else {
+			$next_id = $sponsor_id;
+		}
+		$member_id = new_TestMember($next_id);
+		angelio_inMatrix($member_id, $next_id);
+	}
+	$bonuslevels = array();
+	$output = angelio_downline_tree($statistik,$bonuslevels,1,1,1);
+	
+	return $output;
+}

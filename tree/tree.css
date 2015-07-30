@@ -1,0 +1,75 @@
+.fld_ln {
+	float:left;
+	width:420px;
+	padding-left:5px;
+	margin-top:2px;
+	line-height:1.5em;
+	}
+.fld_ln a{
+	width:400px;
+	text-decoration: none;
+	margin:1px;
+	padding: 1px 2px;
+	border: 1px solid gray;
+	color: #2d2b2b;
+	}
+.Blatt {
+	width:400px;
+	text-decoration: none;
+	margin:1px;
+	padding: 1px 2px;
+	border: 1px solid gray;
+	color: #fff;
+	}
+	
+#tree .Zweig {
+	width:400px;
+	text-decoration: none;
+	margin:1px;
+	padding: 1px 2px;
+	border: 1px solid gray;
+	color: #2d2b2b;
+	}
+
+.Tiefe1 {
+	background-color:#777;
+	}
+.Tiefe2 {
+	background-color:#888;
+	}
+.Tiefe3 {
+	background-color:#999;
+	}
+.Tiefe4 {
+	background-color:#aaa;
+	}	
+.Tiefe5 {
+	background-color:#bbb;
+	}
+.Tiefe6 {
+	background-color:#ccc;
+	}
+.Tiefe7 {
+	background-color:#ddd;
+	}
+.Tiefe8 {
+	background-color:#eee;
+	}			
+#tree .fld_ln a:link, #tree .fld_ln a:visited {
+	color: #000;
+	}
+	
+#tree  a.Zweig:link, #tree a.Zweig:visited {
+	color: #000;
+	}
+
+#tree .fld_ln a:hover{
+	background-color: #FCC521;
+	color: black;
+	}
+	
+/* kleine Zutatenbilder in den Listen */	
+#KleinBild {
+	padding:5px 20px; 
+	background-repeat:no-repeat;
+		}

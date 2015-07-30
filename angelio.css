@@ -1,0 +1,132 @@
+body {}
+
+/* Downlines */
+
+.eigen {
+	border:1px dashed #FF3521;
+}
+
+.depth {
+	color: red;
+}
+
+.level1 {
+	background-color:#FCC521;
+}
+
+.level2 {
+	background-color:#ddd;
+}
+
+.level3 {
+	background-color:#ccc;
+}
+
+.level4 {
+	background-color:#bbb;
+}
+
+.level5 {
+	background-color:#aaa;
+}
+
+.level6 {
+	background-color:#999;
+}
+
+.level7 {
+	background-color:#888;
+}
+
+.level8 {
+	background-color:#777;
+}
+
+.level9 {
+	background-color:#666;
+}
+
+.schwebend {
+	border:1px dashed #666;
+} 
+
+.istaktiv-1,
+a.istaktiv-1 {
+	background-color:#ff3521;
+}
+
+.status-white {background-color:white; border:1px solid #666666;width:10px;}
+.status-green {background-color:green; border:1px solid #666666;width:10px;}
+.status-yellow {background-color:yellow; border:1px solid #666666;width:10px;}
+.status-red {background-color:red; border:1px solid #666666;width:10px;}
+
+
+
+/**
+* Custom form layout.
+*/
+ 
+#user-profile-form legend {
+  font-size: 1.2em;
+}
+
+#user-profile-form .form-column-1,
+#user-profile-form .form-column-2 {
+  float: left;
+  width: 45%;
+}
+
+#user-profile-form .form-column-1 {
+  margin: 0 22px 0 0;
+}
+
+#tblDownline .tblDownlineKunden, #tblDownline .tblDownlineEuro {
+	text-align:right;
+}
+ 
+ 
+#tblCommissionEbenen,
+#tblCommissionMonate {
+	width:500px;
+}
+
+
+#tblCommissionEbenen .tblCommissionCol1,
+#tblCommissionMonate .tblCommissionCol1 {
+	width:250px;
+	text-align:right;
+	border-bottom:1px solid #ccc;
+}
+
+#tblCommissionEbenen .tblCommissionCol2,
+#tblCommissionMonate .tblCommissionCol2 {
+	width:350px;
+	text-align:right;
+	border-bottom:1px solid #ccc;
+}
+
+#tblCommissionEbenen .tblCommissionCol3,
+#tblCommissionMonate .tblCommissionCol3 {
+	width:250px;
+	text-align:right;
+	border-bottom:1px solid #ccc;
+}
+
+#Struktur a {padding-right:10px;}
+
+a.active img {
+	margin:0 0 0 4px;
+}
+
+.vertrag.erweitern,
+.vertrag.kuendigen {
+	float:left;
+}
+
+.schadenbutton input {
+	padding:15px;
+	background-color:red;
+	color:white;
+	font-size:16px;
+	cursor:pointer;
+}
