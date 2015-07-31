@@ -1482,7 +1482,9 @@ global $user;
 				);
 	db_set_active('angelio_daten'); 
 
-	$query = db_select("tbl_Konto_online",'ko');
+	$query = db_select("tbl_Konto_online",'ko')
+	->extend('PagerDefault')->limit(15)
+	->extend('TableSort')->orderByHeader($tblheader); 		
 	$query->leftJoin('tbl_Produkte_Online','pr', 'ko.ProduktID=pr.ProduktID');
 	$query->leftJoin('tbl_Kunden_Online','ku', 'ko.KundenID=ku.KundenID_online');
 	$query->fields('ko');
@@ -1490,11 +1492,10 @@ global $user;
 	$query->fields('ku');
 	$query->where('DATEDIFF(CURDATE(),ko.datAbrechnungsdatum) > 1');
 	$query->condition('ko.SponsorID',$userdata->member_id,'=');
-	$query->extend('PagerDefault')->limit(15);
-	$query->extend('TableSort')->orderByHeader($tblheader); 
+
 	
 	$result = $query->execute()->fetchAll();
-	query_debug($query);
+
 	db_set_active();	
 	
 	foreach($result as $row) {
