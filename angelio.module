@@ -243,11 +243,11 @@ function angelio_menu() {
         'type' => MENU_CALLBACK,
     );
 	
-/*    
+  
 
     $items['provision'] = array(
         'title' => 'Meine angelio Abrechnung',
-        'page callback' => 'angelio_commission',
+        'page callback' => 'angelio_provision',
         'page arguments' => array('0'),                       
         'access arguments' => array('access own commission'),
         'type' => MENU_CALLBACK,
@@ -277,7 +277,7 @@ function angelio_menu() {
         'access arguments' => array('access all kontoauszug'),
         'type' => MENU_CALLBACK,
     );
-
+/*  
         $items['mein-angelio'] = array(
         'title' => 'Mein angelio',
         'page callback' => 'angelio_meinangelio',
@@ -493,6 +493,15 @@ function print_pre($p,$titel="") {
 	print "</pre>";
 }
 
+function query_debug($query){
+	print "<pre>";
+	print "Query: <br>";
+	print_r($query->__toString());
+	print "<br><br>";
+	print "Arguments: <br>";	
+	print_r($query->arguments());
+	print "</pre>";
+}
 
 function angelio_user_presave(&$edit, $account, $category) {
 	// Benutzer bei der Aktivierung in die Matrix platzieren:
@@ -501,17 +510,15 @@ function angelio_user_presave(&$edit, $account, $category) {
       && $account->status === "0" && $edit['status']==1) { // user is being activated
 
     // Benutzer Rolle setzen
-	if ($role = user_role_load_by_name('FREE')) {
+	if ($role = user_role_load_by_name('BRONCE')) {
         user_multiple_role_edit(array($account->uid), 'add_role', $role->rid);
-		drupal_set_message("Dem Benutzer wurde der Status 'FREE' zugeteilt.");
+		drupal_set_message("Dem Benutzer wurde der Status 'BRONCE' zugeteilt.");
       }    
     
  	// Member in Matrix platzieren:
-    $member = angelio_get_userdata($account->uid);
-	angelio_inMatrix($member['KundenID_online'], $member['ReferrerID_O']);
-	drupal_set_message("Der Benutzer wurde in der Matrix platziert.");
-	// passiert jetzt erst beim Bezahlen
-
+    $member = angelio_get_userobject($account->uid);
+	angelio_inMatrix($member->member_id, $member->sponsor_id);
+	drupal_set_message("Sie wurden in der Matrix platziert.");
   }
 }
 
@@ -1174,7 +1181,7 @@ function new_TestMember($sponsor_id) {
 	
 	
 	db_insert('tbl_Kunden_Online')
-	->fields(array('KundenID_online','ReferrerID_O','bonuslevel','strUsername_O','strVName_O','strNName_O','strEmail_O','datAnlageInternet_O','ysnIsTest'))
+	->fields(array('KundenID_online','ReferrerID_O','bonuslevel','strUsername_O','strVName_O','strNName_O','strEmail_O','datAnlageInternet_O','ysnIsTest','Polizzennummer_O'))
 	->values(array(
 		'KundenID_online' => $member_id,
 		'ReferrerID_O' => $sponsor_id,
@@ -1184,7 +1191,8 @@ function new_TestMember($sponsor_id) {
 		'strNName_O' => $nachname[0],
 		'strEmail_O' => $email,
 		'datAnlageInternet_O' => date("Y-m-d H:i:s", time()),
-		'ysnIsTest' => 1
+		'ysnIsTest' => 1,
+		'Polizzennummer_O' => 'test'
 	))
 	->execute();
 	db_set_active();
@@ -1302,4 +1310,223 @@ function send_pdf_mit_email($filename, $path) {
 
   // send email
   mimemail( $settings['from'], $recipients, $subject, $body, FALSE, array(), drupal_html_to_text(decode_entities($body)), $attachments );
+}
+
+function angelio_provision($uid) {
+global $user;
+	
+	if($uid!='0') {
+		$userdata = angelio_get_userobject($uid);
+	} else {
+		$uid = $user->uid;
+		$userdata = angelio_get_userobject($uid);
+	}
+
+	drupal_set_title('Abrechnung von ' . $userdata->first_name);
+	
+	db_set_active('angelio_daten');
+
+	$sql = "SELECT sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision FROM {tbl_stat_Kunden_Downlines} WHERE sponsorID=" . $userdata->member_id;
+	$row = db_query($sql)->fetchAssoc();
+	$summe_kunden = $row['Kunden'];
+	$summe_provision = $row['Provision'];
+
+	if ($summe_provision == 0) {
+		db_set_active();
+		return "<p>Sie haben noch keine Verdienste...</p>";
+	}
+
+	$output = "<hr><br><h3>Verdienst nach Ebenen gesamt:</h3>";
+
+	$sql = "SELECT * FROM {tbl_stat_Kunden_Downlines} WHERE sponsorID=" . $userdata->member_id;
+	
+	$result = db_query($sql);
+			
+	$output .= '<table id="tblCommissionEbenen"><tr><th class="tblCommissionCol1">Level</th><th class="tblCommissionCol2">Anzahl Mitglieder</th><th class="tblCommissionCol3">Laufende Provision</th><tr>';
+	while ($row = $result->fetchAssoc()) {
+		$output .= '<tr><td class="tblCommissionCol1">' . $row['lngLevel'] . '</td><td class="tblCommissionCol2">' . $row['intAnzahlKunden'] . '</td><td class="tblCommissionCol3">' . $row['dblLaufend'] . '&euro;</td></tr>';
+	} 
+
+	$sql = "SELECT sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision FROM {tbl_stat_Kunden_Downlines} WHERE sponsorID=" . $userdata->member_id;
+	$row = db_query($sql)->fetchAssoc();
+	
+	$output .= '<tr><td class="tblCommissionCol1"><b>Summe:</b></td><td class="tblCommissionCol2"><b>' . $summe_kunden . '</b></td><td class="tblCommissionCol3"><b>' . $summe_provision . '&euro;</b></td></tr>'; 
+	$output .= '</table>'; 
+	
+
+	$output .= "<hr><br><h3>Verdienst der Linien:</h3>";
+
+	$sql = "SELECT * FROM {tbl_Kunden_Online} WHERE SponsorID_O=" . $userdata->member_id;
+	$result = db_query($sql);
+	
+	$output .= '<table id="tblCommissionEbenen"><tr><th class="tblCommissionCol1">Frontline</th><th class="tblCommissionCol2">Anzahl Mitglieder</th><th class="tblCommissionCol3">Laufende Provision</th><th class="tblCommissionCol3">Aktiv</th><tr>';		
+	while ($row = $result->fetchAssoc()) {
+		$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision, strUsername_O as Kunde, ysnInaktiv as Aktiv FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 9 AND kd.sponsorID=" . $row['KundenID_online'];
+		$row = db_query($sql)->fetchAssoc();
+		$aktiv = ($row['Aktiv'] == 0) ? 'Ja' : 'Nein';
+		$kunden = ($row['Kunden'] == "") ? '0' : $row['Kunden'];
+		$provision = ($row['Provision'] == "") ? '0' : $row['Provision'];
+		if (user_access('access all provisionen')) {
+			$output .= '<tr><td class="tblCommissionCol1"><a href="/provision/' . $row['sponsorID'] . '">' . $row['Kunde'] . '</a></td><td class="tblCommissionCol2">' . $kunden . '</td><td class="tblCommissionCol3">' . $provision . '&euro;</td><td class="tblCommissionCol2">' . $aktiv . '</td></tr>';
+		} else {
+			$output .= '<tr><td class="tblCommissionCol1">' . $row['Kunde'] . '</td><td class="tblCommissionCol2">' . $kunden . '</td><td class="tblCommissionCol3">' . $provision . '&euro;</td><td class="tblCommissionCol2">' . $aktiv . '</td></tr>';			
+		}
+	} 
+
+	$output .= '</table>'; 
+	
+	
+	$output .= "<hr><br><h3>Verdienst nach Monaten:</h3>";
+
+		// SELECT strBonusart, datAbrechnungsdatum, sum(dblBetrag) as Betrag FROM `tbl_Konto_online` WHERE SponsorID=62 group by strBonusart, datAbrechnungsdatum order by datAbrechnungsdatum desc
+	$sql = "SELECT * FROM {tbl_stat_Provisionsentwicklung_monatlich} WHERE sponsorID=" . $userdata->member_id . " ORDER BY Jahr desc, Monat desc";
+	$result = db_query($sql);
+		
+	$output .= '<table id="tblCommissionMonate"><tr><th class="tblCommissionCol1">Jahr</th><th class="tblCommissionCol2">Monat</th><th class="tblCommissionCol3">Laufende Provision</th><tr>';
+	while ($row = $result->fetchAssoc()) {
+		$output .= '<tr><td class="tblCommissionCol1">' . $row['Jahr'] . '</td><td class="tblCommissionCol2">' . $row['Monat'] . '</td><td class="tblCommissionCol3">' . $row['Provisionssumme'] . '&euro;</td></tr>';
+	} 
+	$output .= '</table>';
+	
+	
+	$output .= "<hr><br><h3>Dynamikbonus gesamt:</h3>";
+
+	$sql = "SELECT sum(dblDynamik) AS Provision FROM {tbl_stat_Kunden_Downlines} WHERE sponsorID=" . $userdata->member_id;
+	$row = db_query($sql)->fetchAssoc();
+		
+	$output .= $row['Provision']. '&euro;';
+	
+	db_set_active();
+	
+	/* Schwebend:
+	 SELECT *
+FROM tbl_Konto_online k
+JOIN tbl_Vertraege_online v ON k.VertragsID = v.VertragsID
+JOIN tbl_Produkte_Online p ON k.ProduktID = p.ProduktID
+WHERE k.KundenID =15
+	 */
+	
+	return $output;
+}
+
+function angelio_kontoauszug($uid) {
+global $user;
+	
+	if($uid!='0') {
+		$userdata = angelio_get_userobject($uid);
+	} else {
+		$uid = $user->uid;
+		$userdata = angelio_get_userobject($uid);
+	}
+	
+	drupal_set_title('Kontoauszug von ' . $userdata->first_name);
+	
+	db_set_active('angelio_daten');
+
+	$output = "<hr><br><h3>Überweisungen:</h3>";
+	$output .= "<p style='font-size:11px;'>Sobald Dein offener Saldo mehr als 30€ aufweist, wird eine Überweisung auf Dein Bankkonto durchgeführt.<br>Beachte jedoch die 14-tägige Kündigungsfrist, die zusätzlich verstrichen sein muss.</p>";
+
+	$sql = "SELECT sum(dblBetrag) as Betrag FROM `tbl_Konto_online` WHERE DATEDIFF(CURDATE(),datAbrechnungsdatum) > 1 AND SponsorID=" . $userdata->member_id;
+	$result = db_query($sql)->fetchAssoc();	
+	$gesamt = $result['Betrag'];
+	
+	if ($gesamt == 0) {
+		db_set_active();
+		return "<p>Sie haben noch keine Kontobewegungen...</p>";
+	}
+	
+
+	$output .= '<hr><table id="tblCommissionUberweisung"><tr>
+		<th class="tblCommissionCol1">Datum</th>
+		<th class="tblCommissionCol1">Betrag</th></tr>';
+		
+	$sql = "SELECT sum(dblBetrag) as Betrag FROM tbl_Konto_online WHERE datAusbezahltAm IS NULL AND DATEDIFF(CURDATE(),datAbrechnungsdatum) > 1  AND SponsorID=" . $userdata->member_id;
+	$result = db_query ($sql)->fetchAssoc();
+	$offen = ($result['Betrag'] == "") ? "0" : $result['Betrag'];
+	
+	$output .= 	'<tr><td class="tblCommissionCol1">Gesamtsumme aller offenen Werbeprämien</td><td class="tblCommissionCol2">' . $offen . '&euro;</td></tr>';
+					
+	$sql = "SELECT sum(dblBetrag) as Betrag FROM tbl_Konto_online ko JOIN tbl_Kunden_Online ku on ko.KundenID = ku.KundenID_Online WHERE ko.datAusbezahltAm IS NULL AND DATEDIFF(CURDATE(),ku.datAnlageInternet_O) < 15 AND DATEDIFF(CURDATE(),ko.datAbrechnungsdatum) > 1 AND ko.SponsorID=" . $userdata->member_id;
+	$result = db_query ($sql)->fetchAssoc();
+	$offen_schwebend = ($result['Betrag'] == "") ? "0" : $result['Betrag'];
+	$output .= 	'<tr><td class="tblCommissionCol1">davon noch gesperrt aufgrund Kündigungsfrist</td><td class="tblCommissionCol2">' . $offen_schwebend . '&euro;</td></tr>';	
+	
+	$sql = "SELECT datAusbezahltAm, sum(dblBetrag) as Betrag FROM tbl_Konto_online WHERE NOT (datAusbezahltAm IS NULL) AND DATEDIFF(CURDATE(),datAbrechnungsdatum) > 1 AND SponsorID=" . $userdata->member_id . " group by datAusbezahltAm order by datAusbezahltAm";
+	
+	$result = db_query($sql);	
+
+	while ($row = $result->fetchAssoc()) {
+		$datum = fdate($row["datAusbezahltAm"],"d") . '.' . fdate($row["datAusbezahltAm"],"m") . '.' . fdate($row["datAusbezahltAm"],"Y");
+
+		$output .= 	'<tr><td class="tblCommissionCol1">' . $datum .
+		 			'</td><td class="tblCommissionCol2">' . $row['Betrag'] . '&euro;' .
+					'</td></tr>';
+	}
+	$output .= 	'<tr><td class="tblCommissionCol1" style="border-top:1px solid #333;">GESAMTVERDIENST' .
+		 			'</td><td class="tblCommissionCol2" style="border-top:1px solid #333;">' . $gesamt . '&euro;' .
+					'</td></tr>';	
+	$output .= '</table>';  
+		
+			
+	$output .= "<hr><br><h3>Provisionen:</h3>";
+
+
+ 	$tblheader = array(
+ 					array('data'=>'Level','field'=>'lngLevel'),
+					array('data'=>'Partner','field'=>'strVName_O'),
+					array('data'=>'Produkt','field'=>'strProduktbezeichnung'),					
+					array('data'=>'Bonusart','field'=>'strBonusart'),	
+					array('data'=>'Betrag','field'=>'dblBetrag'),
+					array('data'=>'Abrechnung','field'=>'datAbrechnungsdatum'),
+					array('data'=>'Ausbezahlt','field'=>'datAusbezahltAm','sort'=>'desc')
+				);
+	db_set_active('angelio_daten'); 
+
+	$query = db_select("tbl_Konto_online",'ko');
+	$query->leftJoin('tbl_Produkte_Online','pr', 'ko.ProduktID=pr.ProduktID');
+	$query->leftJoin('tbl_Kunden_Online','ku', 'ko.KundenID=ku.KundenID_online');
+	$query->fields('ko');
+	$query->fields('pr');
+	$query->fields('ku');
+	$query->where('DATEDIFF(CURDATE(),ko.datAbrechnungsdatum) > 1');
+	$query->condition('ko.SponsorID',$userdata->member_id,'=');
+	$query->extend('PagerDefault')->limit(15);
+	$query->extend('TableSort')->orderByHeader($tblheader); 
+	
+	$result = $query->execute()->fetchAll();
+	query_debug($query);
+	db_set_active();	
+	
+	foreach($result as $row) {
+		$abrechnung = fdate($row->datAbrechnungsdatum,"d") . '.' . fdate($row->datAbrechnungsdatum,"m") . '.' . fdate($row->datAbrechnungsdatum,"Y");
+		if ($row->datAusbezahltAm == "") { $ausbezahlt = "noch offen"; } 
+		else {$ausbezahlt = fdate($row->datAusbezahltAm,"d") . '.' . fdate($row->datAusbezahltAm,"m") . '.' . fdate($row->datAusbezahltAm,"Y");}
+
+    $table_rows[] = 
+    	array(
+			array('data' => $row->lngLevel - 1),
+			array('data' => $row->strVName_O),
+			array('data' => $row->strProduktbezeichnung),		
+			array('data' => $row->strBonusart), 
+			array('data' => $row->dblBetrag . '&euro;'),
+			array('data' => $abrechnung),
+			array('data' => $ausbezahlt)
+		);
+	}
+
+  //return a themed schedule table
+  $output .= theme_table(array('header' => $tblheader,
+                           'rows' => $table_rows,
+                           'attributes' => array('class' => 'table_dfs', 'width' => '100%'),
+                           'caption' => '',
+                           'colgroups' => array(),
+                           'sticky' => FALSE,
+                           'empty' => 'No data is available',
+                          )); 
+						  	
+	$output .= theme('pager', array('tags' => array()));
+	
+	$output .= '<div style="font-size:11px">"noch offen" bedeutet, dass sich das Mitglied noch innerhalb seiner gesetzlichen Kündigungsfrist befindet und somit noch keine Auszahlung möglich ist.</div>';
+			
+	return $output;		
 }
