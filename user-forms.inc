@@ -161,8 +161,8 @@ Gläubiger-Identifikationsnummer: AT76ZZZ00000016804<br>
 	  '#required' => TRUE,
 	  '#options' => array('1'=>'jährlich 240€',
 	  					  '2'=>'halbjährlich 120€',
-	  					  '3'=>'quartalsweise 60€',
-	  					  '4'=>'monatlich 20€'), 
+	  					  '4'=>'quartalsweise 60€',
+	  					  '12'=>'monatlich 20€'), 
 	  '#weight' => 4,	
 	);
 
@@ -342,7 +342,7 @@ meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 	  '#type' => 'select',
 	  '#title' => t('Zahlungsweise'),
 	  '#required' => TRUE,
-	  '#options' => array('1'=>'jährlich','2'=>'halbjährlich','3'=>'quartalsweise','4'=>'monatlich'),	  
+	  '#options' => array('1'=>'jährlich','2'=>'halbjährlich','4'=>'quartalsweise','12'=>'monatlich'),	  
 	  '#default_value' => $userdata['Zahlungsintervall_O'],
 	  '#weight' => 4,	
 	);

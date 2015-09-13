@@ -1,11 +1,13 @@
 <?php
 
-require_once('user-forms.inc');
-
 // $Id$
 global $base_url;
 global $user;
 
+require_once('user-forms.inc');
+if ($user->uid == 1) {
+	require_once('admin.inc');
+}
 
 // Username und Vorname an Javascript übergeben:
 
@@ -117,12 +119,12 @@ function angelio_mail($key, &$message, $params) {
     case 'kuendigen':
       // note: data can be passed to this function in the $params array
       $message['subject'] = 'angelio Kündigung';
-      $message['body'] = "Hallo " . $params['Vorname'] . "!\n\nDein Vertrag mit der AIG-Nummer " . $params['Polizze'] . " wird gekündigt.\n\nDein angelio Team.";
+      $message['body'][] = "Hallo " . $params['Vorname'] . "!\n\nDein Vertrag mit der AIG-Nummer " . $params['Polizze'] . " wird gekündigt.\n\nDein angelio Team.";
       break;    
     case 'erweitern':
       // note: data can be passed to this function in the $params array
       $message['subject'] = "angelio Vertragserweiterung";
-      $message['body'] = "Hallo " . $params['Vorname'] . "!\n\nDein Vertrag mit der AIG-Nummer " . $params['Polizze'] . " wird erweitert.\n\nDein angelio Team.";
+      $message['body'][] = "Hallo " . $params['Vorname'] . "!\n\nDein Vertrag mit der AIG-Nummer " . $params['Polizze'] . " wird erweitert.\n\nDein angelio Team.";
       break;
     case 'upline':
       // note: data can be passed to this function in the $params array
@@ -133,14 +135,14 @@ function angelio_mail($key, &$message, $params) {
 	  $body .= "Username: ". $params['Neueruser']. "\n\n";
 	  $body .= "\n\nDenk daran, jedes neue Mitglied kann für einen Wachstumsschub in Deiner gesamten Downline verantwortlich sein.\nAlso informiere so viele Menschen wie möglich über unseren Verein, um Deinen Nebenverdienst zu erhöhen.";
       $body .= "\n\nDein angelio Team.";
-      $message['body'] = $body;
+      $message['body'][] = $body;
       break;	  
    case 'neuer':
       $message['subject'] = "Neue Anmeldung bei angelio: " . $params['Neueruser'];
       $body = "Sponsor: " . $params['Sponsorname']. "\n\n";
 	  $body .= "Neues Mitglied: ". $params['Neuervname']. " " . $params['Neuernname']. "\n";
 	  $body .= "Username: ". $params['Neueruser']. "\n\n";
-      $message['body'] = $body;
+      $message['body'][] = $body;
       break;	    
   }
 }
@@ -149,13 +151,27 @@ function angelio_mail($key, &$message, $params) {
 function angelio_menu() {
     $items = array();
 	
-    $items['angelio_admin'] = array(
-        'title' => 'angelio Administration',
-        'page callback' => 'angelio_admin',
-        'access arguments' => array('access all downlines'),
-        'type' => MENU_CALLBACK,
-    );
-		
+	
+
+	$items['admin/angelio'] = array(
+		'title' => 'ANGELIO',
+		'description' => 'This is the parent item',
+		'position' => 'left',
+		'weight' => -100,
+		'page callback' => 'system_admin_menu_block_page',
+		'access arguments' => array('administer site configuration'),
+		'file' => 'system.admin.inc',
+		'file path' => drupal_get_path('module', 'system'),
+	);
+	 
+	// Need at least one child item before your section will appear.
+	$items['admin/angelio/testdaten'] = array(
+		'title' => 'angelio Testdaten',
+		'description' => 'angelio Testdaten anlegen und löschen',
+		'page callback' => 'angelio_admin',
+		'access arguments' => array('administer site configuration'),
+	);
+
     $items['join/%'] = array(
         'title' => 'Register',
         'page callback' => 'angelio_register',
@@ -211,6 +227,13 @@ function angelio_menu() {
     'access arguments' => array('administer site configuration'),
   );
 
+  $items['angelio/position/%/%/%'] = array(
+    'title' => 'New Position',
+    'description' => 'Next free position',
+    'page callback' => 'angelio_TestInsert',
+    'page arguments' => array(2,3,4),
+    'access arguments' => array('administer site configuration'),
+  );
 
     $items['angelio/resettests'] = array(
         'title' => 'Testdaten gelöscht',
@@ -277,7 +300,58 @@ function angelio_menu() {
         'access arguments' => array('access all kontoauszug'),
         'type' => MENU_CALLBACK,
     );
-/*  
+
+        $items['kuendigen/%'] = array(
+        'title' => 'Vertrag kündigen',
+        'page callback' => 'angelio_kuendigen',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own polizzen'),
+        'type' => MENU_CALLBACK,
+    );
+	
+        $items['kuendigen/%/jetzt'] = array(
+        'title' => 'Vertrag jetzt kündigen',
+        'page callback' => 'angelio_kuendigen_jetzt',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own polizzen'),
+        'type' => MENU_CALLBACK,
+    );
+	
+        $items['kuendigen/%/sofort'] = array(
+        'title' => 'Vertrag wird gekündigt',
+        'page callback' => 'angelio_kuendigen_sofort',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own polizzen'),
+        'type' => MENU_CALLBACK,
+    );
+	
+        $items['erweitern/%'] = array(
+        'title' => 'Leistung erweitern',
+        'page callback' => 'angelio_erweitern',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own polizzen'),
+        'type' => MENU_CALLBACK,
+    );
+
+        $items['erweitern/%/jetzt'] = array(
+        'title' => 'Vertrag jetzt erweitern',
+        'page callback' => 'angelio_erweitern_jetzt',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own polizzen'),
+        'type' => MENU_CALLBACK,
+    );
+
+        $items['erweitern/%/sofort'] = array(
+        'title' => 'Vertrag wird erweitert',
+        'page callback' => 'angelio_erweitern_sofort',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own polizzen'),
+        'type' => MENU_CALLBACK,
+    );
+		
+		
+		
+ /*  
         $items['mein-angelio'] = array(
         'title' => 'Mein angelio',
         'page callback' => 'angelio_meinangelio',
@@ -326,54 +400,7 @@ function angelio_menu() {
         'type' => MENU_CALLBACK,
     );
 	
-        $items['kuendigen/%'] = array(
-        'title' => 'Vertrag kündigen',
-        'page callback' => 'angelio_kuendigen',
-        'page arguments' => array(1),               
-        'access arguments' => array('access own polizzen'),
-        'type' => MENU_CALLBACK,
-    );
-	
-        $items['kuendigen/%/jetzt'] = array(
-        'title' => 'Vertrag jetzt kündigen',
-        'page callback' => 'angelio_kuendigen_jetzt',
-        'page arguments' => array(1),               
-        'access arguments' => array('access own polizzen'),
-        'type' => MENU_CALLBACK,
-    );
-	
-        $items['kuendigen/%/sofort'] = array(
-        'title' => 'Vertrag wird gekündigt',
-        'page callback' => 'angelio_kuendigen_sofort',
-        'page arguments' => array(1),               
-        'access arguments' => array('access own polizzen'),
-        'type' => MENU_CALLBACK,
-    );
-	
-        $items['erweitern/%'] = array(
-        'title' => 'Leistung erweitern',
-        'page callback' => 'angelio_erweitern',
-        'page arguments' => array(1),               
-        'access arguments' => array('access own polizzen'),
-        'type' => MENU_CALLBACK,
-    );
-
-        $items['erweitern/%/jetzt'] = array(
-        'title' => 'Vertrag jetzt erweitern',
-        'page callback' => 'angelio_erweitern_jetzt',
-        'page arguments' => array(1),               
-        'access arguments' => array('access own polizzen'),
-        'type' => MENU_CALLBACK,
-    );
-
-        $items['erweitern/%/sofort'] = array(
-        'title' => 'Vertrag wird erweitert',
-        'page callback' => 'angelio_erweitern_sofort',
-        'page arguments' => array(1),               
-        'access arguments' => array('access own polizzen'),
-        'type' => MENU_CALLBACK,
-    );
-					
+			
 	// Pager Test items
 	$items['test/pager'] = array(
    	  'title' => 'Konto test pager',
@@ -398,12 +425,6 @@ function angelio_menu() {
 */
 		
 	return $items;
-}
-
-function angelio_admin() {
-	$output = "<form action='/angelio_sync_shop'><input type='submit' value='Den Shop synchronisieren'></form>";
-	
-	return $output;
 }
 
 function angelio_join() {
@@ -542,7 +563,7 @@ function angelio_get_username($member_id) {
 
 function angelio_get_userobject($username) {
 global $user;
-	
+
 	if ($username=="") {$username = $user->name;}
 	  // For convenience, we'll allow user ids as well as full user objects.
 	if (is_numeric($username)) {
@@ -792,7 +813,7 @@ global $user;
 	$row = db_query($sql)->fetchAssoc();  
 	
 	$output .= "<hr><h3>Upline</h3>";
-	$output .= '<table id="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
+	$output .= '<table class="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
 	$aktiv = ($row['ysnInaktiv'] == 0) ? 'Ja' : 'Nein';
 	if (user_access('access all downlines')) {
 		$output .= '<tr><td <td class="tblDownlineUName"><a href="/downline/' . $row['KundenID_online'] . '">' . $row['strUsername_O'] . '</a></td><td class="tblDownlineVName">' . $row['strVName_O'] . '</td><td class="tblDownlineVName">' . $row['strNName_O'] . '</td><td class="tblDownlineEmail">' . $row['strEmail_O'] . '</td><td class="tblDownlineTelefon">' . $row['strTelefon_O'] . '</td><td class="tblDownlineAktiv">' . $aktiv . '</td></tr>';
@@ -812,7 +833,7 @@ global $user;
 		return $output . '<p>Sie haben noch keine Downline...</p>';
 	}
 	
-	$output .= '<table id="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
+	$output .= '<table class="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
 
 	while ($row = $result->fetchAssoc()) {
 		$aktiv = ($row['ysnInaktiv'] == 0) ? 'Ja' : 'Nein';		
@@ -877,7 +898,7 @@ global $user;
 	$row = db_query($sql)->fetchAssoc();  
 	
 	$output = "<hr><h3>Upline</h3>";
-	$output .= '<table id="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
+	$output .= '<table class="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
 	$aktiv = ($row['ysnInaktiv'] == 0) ? 'Ja' : 'Nein';
 	if (user_access('access all downlines')) {
 		$output .= '<tr><td <td class="tblDownlineUName"><a href="/downline/' . $row['KundenID_online'] . '">' . $row['strUsername_O'] . '</a></td><td class="tblDownlineVName">' . $row['strVName_O'] . '</td><td class="tblDownlineVName">' . $row['strNName_O'] . '</td><td class="tblDownlineEmail">' . $row['strEmail_O'] . '</td><td class="tblDownlineTelefon">' . $row['strTelefon_O'] . '</td><td class="tblDownlineAktiv">' . $aktiv . '</td></tr>';
@@ -897,7 +918,7 @@ global $user;
 		return $output . '<p>Sie haben noch keine Downline...</p>';
 	}
 	
-	$output .= '<table id="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
+	$output .= '<table class="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
 
 	while ($row = $result->fetchAssoc()) {
 		$aktiv = ($row['ysnInaktiv'] == 0) ? 'Ja' : 'Nein';		
@@ -1164,10 +1185,12 @@ function angelio_resettests() {
 	db_set_active();
 	$statistik = array();
 	$bonuslevels = array();
-	return "<p>Testdaten gelöscht.</p>";
-}
+	drupal_set_message("Testdaten gelöscht.");
+	drupal_goto("admin/angelio/testdaten");
+	return;
+} 
 
-function new_TestMember($sponsor_id) {
+function new_TestMember($sponsor_id, $datum) {
 	db_set_active('angelio_daten');
 	$result = db_query("SELECT Vorname FROM {tblNamen} ORDER BY rand() LIMIT 1;")->fetchCol();
 	$vorname = $result;
@@ -1179,9 +1202,18 @@ function new_TestMember($sponsor_id) {
 	$result = db_query("SELECT KundenID_online FROM {tbl_Kunden_Online} order by KundenID_online desc limit 1")->fetchCol();
 	$member_id = $result[0] + 1;
 	
+	$Polizzennummer_O = date("ym") . sprintf("%07d", $member_id) . "0101";
+	$zahlunsintervall = rand(1,4); 
+	if ($zahlunsintervall == 3) {$zahlunsintervall = 12;}
+	
+	if ($datum == "") {
+		$datAnlage = date("Y-m-d H:i:s", time());
+	} else {
+		$datAnlage = $datum . " 00:00:00";
+	}
 	
 	db_insert('tbl_Kunden_Online')
-	->fields(array('KundenID_online','ReferrerID_O','bonuslevel','strUsername_O','strVName_O','strNName_O','strEmail_O','datAnlageInternet_O','ysnIsTest','Polizzennummer_O'))
+	->fields(array('KundenID_online','ReferrerID_O','bonuslevel','strUsername_O','strVName_O','strNName_O','strEmail_O','datAnlageInternet_O','ysnIsTest','Polizzennummer_O','Zahlungsintervall_O'))
 	->values(array(
 		'KundenID_online' => $member_id,
 		'ReferrerID_O' => $sponsor_id,
@@ -1190,16 +1222,17 @@ function new_TestMember($sponsor_id) {
 		'strVName_O' => $vorname[0],
 		'strNName_O' => $nachname[0],
 		'strEmail_O' => $email,
-		'datAnlageInternet_O' => date("Y-m-d H:i:s", time()),
+		'datAnlageInternet_O' => $datAnlage,
 		'ysnIsTest' => 1,
-		'Polizzennummer_O' => 'test'
+		'Polizzennummer_O' => $Polizzennummer_O,
+		'Zahlungsintervall_O' => $zahlunsintervall
 	))
 	->execute();
 	db_set_active();
 	return $member_id;
 }
 
- function angelio_TestInsert($sponsor_id, $anz){
+ function angelio_TestInsert($sponsor_id, $anz, $datum=""){
 	for ($i=1; $i <= $anz; $i++) { 	
 		if ($sponsor_id == -1) { // Sponsor aus DB holen, sonst den angegebenen $sponsor verwenden
 			db_set_active('angelio_daten');
@@ -1210,7 +1243,7 @@ function new_TestMember($sponsor_id) {
 		} else {
 			$next_id = $sponsor_id;
 		}
-		$member_id = new_TestMember($next_id);
+		$member_id = new_TestMember($next_id, $datum);
 
 		angelio_inMatrix($member_id, $next_id);
 	}
@@ -1248,9 +1281,9 @@ global $user;
 			$sql = "SELECT * FROM {tbl_Vertraege_Status} WHERE Polizzennummer='" . $row['Polizzennummer'] . "' AND datErweitert<>'0'";
 			$erweitert = db_query($sql)->fetchAssoc();			
 			if (!is_null($erweitert['Polizzennummer'])) {
-			$output .= '<tr><td class="tblCommissionCol1">' . $row['strProduktbezeichnung'] . '</td><td class="tblCommissionCol2"><a href="/polizze/' . $uid . '/' . $row['Polizzennummer'] . '">' . $row['Polizzennummer'] . '</a></td><td class="tblCommissionCol3">' . fdate($row["datAbschluss"],"d") . '.' . fdate($row["datAbschluss"],"m") . '.' . fdate($row["datAbschluss"],"Y") . '</td><td><form class="vertrag kuendigen" title="Den Vertrag kündigen..." action="/kuendigen/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" value="kündigen..."></form></td></tr>';
+			$output .= '<tr><td valign="top" class="tblVertraegeCol">' . $row['strProduktbezeichnung'] . '</td><td valign="top" class="tblVertraegeCol"><a href="/polizze/' . $uid . '/' . $row['Polizzennummer'] . '">' . $row['Polizzennummer'] . '</a></td><td valign="top" class="tblVertraegeCol">' . fdate($row["datAbschluss"],"d") . '.' . fdate($row["datAbschluss"],"m") . '.' . fdate($row["datAbschluss"],"Y") . '</td><td><form class="vertrag kuendigen" title="Den Vertrag kündigen..." action="/kuendigen/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" value="kündigen..."></form></td></tr>';
 			} else {
-			$output .= '<tr><td class="tblCommissionCol1">' . $row['strProduktbezeichnung'] . '</td><td class="tblCommissionCol2"><a href="/polizze/' . $uid . '/' . $row['Polizzennummer'] . '">' . $row['Polizzennummer'] . '</a></td><td class="tblCommissionCol3">' . fdate($row["datAbschluss"],"d") . '.' . fdate($row["datAbschluss"],"m") . '.' . fdate($row["datAbschluss"],"Y") . '</td><td><form class="vertrag kuendigen" title="Den Vertrag kündigen..." action="/kuendigen/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" value="kündigen..."></form><form class="vertrag erweitern" action="/erweitern/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" title="Den Vertrag erweitern..." value="erweitern..."></form></td></tr>';				
+			$output .= '<tr><td valign="top" class="tblVertraegeCol">' . $row['strProduktbezeichnung'] . '</td><td valign="top" class="tblVertraegeCol"><a href="/polizze/' . $uid . '/' . $row['Polizzennummer'] . '">' . $row['Polizzennummer'] . '</a></td><td valign="top" class="tblVertraegeCol">' . fdate($row["datAbschluss"],"d") . '.' . fdate($row["datAbschluss"],"m") . '.' . fdate($row["datAbschluss"],"Y") . '</td><td><form class="vertrag kuendigen" title="Den Vertrag kündigen..." action="/kuendigen/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" value="kündigen..."></form><form class="vertrag erweitern" action="/erweitern/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" title="Den Vertrag erweitern..." value="erweitern..."></form></td></tr>';				
 			}
 		}
 		$output .= '</table>';
@@ -1260,15 +1293,15 @@ global $user;
 	db_set_active();
 			
 	$output .= "<hr><br><h3>Meine Dokumente:</h3>";
-	$output .= "<table><tr><td>";	
+	$output .= "<table><tr><td class='tblVertraegeCol'>";	
 	$output .= "<a href='/downloads/AIG_AUVB_2005_extern.pdf' target='_blank'>AIG Allg. Unfallversicherungsbedingungen (AUVB 2005)</a><br>"; 
 	$output .= "<a href='/downloads/AIG_Progressionstabelle.pdf' target='_blank'>AIG Progressionstabelle</a><br>";
 	$output .= "<a href='/downloads/Datenschutzrichtlinie.pdf' target='_blank'>Datenschutzrichtlinie</a><br>";
 	$output .= "<a href='/downloads/Widerrufsbelehrung.pdf' target='_blank'>Widerrufsbelehrung</a><br>";
 	$output .= "<a href='/downloads/AGBangelio.pdf' target='_blank'>Allgemeine Bedingungen der Mitgliederwerbung</a><br>";
 		
-	$output .= "</td><td>";
-	$output .= "<form class='schadenbutton' action='/schaden'><input type='submit' title='Einen Unfall melden...' value='Einen Unfall melden...'></form>";
+	$output .= "</td><td align='right'>";
+	$output .= "<form id='schadenbutton' action='/schaden'><input type='submit' title='Einen Unfall melden...' value='Einen Unfall melden...'></form>";
 	$output .= "</td></tr></table>";	
 	
 	return $output; 
@@ -1389,12 +1422,16 @@ global $user;
 	$output .= '</table>';
 	
 	
-	$output .= "<hr><br><h3>Dynamikbonus gesamt:</h3>";
+	$output .= "<hr><br><h3>Provisionen gesamt:</h3>";
 
-	$sql = "SELECT sum(dblDynamik) AS Provision FROM {tbl_stat_Kunden_Downlines} WHERE sponsorID=" . $userdata->member_id;
-	$row = db_query($sql)->fetchAssoc();
-		
-	$output .= $row['Provision']. '&euro;';
+	$sql = "SELECT strBonusart, sum(dblBetrag) as Summe FROM {tbl_Konto_online} WHERE SponsorID=" . $userdata->member_id . " GROUP BY strBonusart ORDER BY strBonusart";
+	$result = db_query($sql);
+			
+	$output .= '<table id="tblCommissionMonate"><tr><th class="tblCommissionCol2">Bonusart</th><th class="tblCommissionCol3">Summe Provision</th><tr>';
+	while ($row = $result->fetchAssoc()) {
+		$output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . $row['Summe'] . '&euro;</td></tr>';
+	} 
+	$output .= '</table>';
 	
 	db_set_active();
 	
@@ -1418,7 +1455,8 @@ global $user;
 		$uid = $user->uid;
 		$userdata = angelio_get_userobject($uid);
 	}
-	
+
+
 	drupal_set_title('Kontoauszug von ' . $userdata->first_name);
 	
 	db_set_active('angelio_daten');
@@ -1437,14 +1475,14 @@ global $user;
 	
 
 	$output .= '<hr><table id="tblCommissionUberweisung"><tr>
-		<th class="tblCommissionCol1">Datum</th>
+		<th class="tblCommissionCol1" style="width:400px;">Offene Provisonen</th>
 		<th class="tblCommissionCol1">Betrag</th></tr>';
 		
 	$sql = "SELECT sum(dblBetrag) as Betrag FROM tbl_Konto_online WHERE datAusbezahltAm IS NULL AND DATEDIFF(CURDATE(),datAbrechnungsdatum) > 1  AND SponsorID=" . $userdata->member_id;
 	$result = db_query ($sql)->fetchAssoc();
 	$offen = ($result['Betrag'] == "") ? "0" : $result['Betrag'];
 	
-	$output .= 	'<tr><td class="tblCommissionCol1">Gesamtsumme aller offenen Werbeprämien</td><td class="tblCommissionCol2">' . $offen . '&euro;</td></tr>';
+	$output .= 	'<tr><td class="tblCommissionCol1">Gesamtsumme aller offenen Provisionen</td><td class="tblCommissionCol2">' . $offen . '&euro;</td></tr>';
 					
 	$sql = "SELECT sum(dblBetrag) as Betrag FROM tbl_Konto_online ko JOIN tbl_Kunden_Online ku on ko.KundenID = ku.KundenID_Online WHERE ko.datAusbezahltAm IS NULL AND DATEDIFF(CURDATE(),ku.datAnlageInternet_O) < 15 AND DATEDIFF(CURDATE(),ko.datAbrechnungsdatum) > 1 AND ko.SponsorID=" . $userdata->member_id;
 	$result = db_query ($sql)->fetchAssoc();
@@ -1477,8 +1515,8 @@ global $user;
 					array('data'=>'Produkt','field'=>'strProduktbezeichnung'),					
 					array('data'=>'Bonusart','field'=>'strBonusart'),	
 					array('data'=>'Betrag','field'=>'dblBetrag'),
-					array('data'=>'Abrechnung','field'=>'datAbrechnungsdatum'),
-					array('data'=>'Ausbezahlt','field'=>'datAusbezahltAm','sort'=>'desc')
+					array('data'=>'Abrechnung','field'=>'datAbrechnungsdatum','sort'=>'desc'),
+					array('data'=>'Ausbezahlt','field'=>'datAusbezahltAm')
 				);
 	db_set_active('angelio_daten'); 
 
@@ -1492,6 +1530,7 @@ global $user;
 	$query->fields('ku');
 	$query->where('DATEDIFF(CURDATE(),ko.datAbrechnungsdatum) > 1');
 	$query->condition('ko.SponsorID',$userdata->member_id,'=');
+	$query->orderBy('ko.datAbrechnungsdatum', 'DESC')->orderBy('ko.lngLevel', 'ASC');
 
 	
 	$result = $query->execute()->fetchAll();
@@ -1530,4 +1569,228 @@ global $user;
 	$output .= '<div style="font-size:11px">"noch offen" bedeutet, dass sich das Mitglied noch innerhalb seiner gesetzlichen Kündigungsfrist befindet und somit noch keine Auszahlung möglich ist.</div>';
 			
 	return $output;		
+}
+
+
+function angelio_kuendigen($polizze) {
+global $user;
+
+	$uid = $user->uid;
+	$userdata = angelio_get_userobject($uid);
+
+	db_set_active('angelio_daten');
+	$sql = "SELECT * FROM  tbl_Vertraege_online WHERE Polizzennummer=" . $polizze;
+	$result = db_query($sql)->fetchAssoc();		
+
+	$datetime1 = new DateTime();
+	$datetime2 = new DateTime($result['datAbschluss']);
+	$interval = $datetime2->diff($datetime1);
+	$date_anlage = date_create($result['datAbschluss']);
+
+	$output = "<p>Hallo " . $userdata->first_name. "!</p>";
+	
+	if ($interval->days < 15) {
+ 		$output .= '<p>Du kannst bei angelio innerhalb von 14 Tagen ohne Angabe von Gründen Deine Verträge bei angelio kündigen. Beachte jedoch, dass bei einer Kündigung alle allfälligen Provisionsansprüche von Deiner Downline verloren gehen. Weitere Verträge, die über angelio abgeschlossen hast, sind von der Kündigung Dieses Vertrages natürlich nicht betroffen (z.B. Bausparer).</p>';
+	$output .= "<p>Deine gesetzliche Kündigungsfrist läuft noch bis: " . date("d.m.Y",mktime(0, 0, 1, date_format($date_anlage, 'm'), date_format($date_anlage, 'd')+14, date_format($date_anlage, 'Y')));
+	} else {
+ 		$output .= '<p>Du kannst jährlich von Deinen Verträgen zurücktreten. Beachte jedoch, dass bei einer Kündigung alle allfälligen Provisionsansprüche von Deiner Downline verloren gehen. Weitere Verträge, die Du über angelio abgeschlossen hast, sind von der Kündigung dieses Vertrages natürlich nicht betroffen (z.B. Bausparer).</p>';
+		$output .= "<p>Nächstmöglicher Kündigungstermin: " . date("m.d.Y",mktime(0, 0, 0, 1, date_format($date_anlage, 'm'), date_format($date_anlage, 'Y')+1)) . "</p>";		
+	}
+	$output .= "<p>Versicherungsbestätigung: " . $polizze;
+	// $output .= "<p>Alter: " . $interval->format('%a Tage');
+	
+	db_set_active();
+		
+	$output .= '<form title="Den Vertrag jetzt kündigen" action="/kuendigen/' . $polizze . '/jetzt" method="post"><input type="hidden" value="' . $polizze . '"><input type="submit" value="Den Vertrag jetzt kündigen"></form>';
+		
+	return $output;
+}
+
+function angelio_kuendigen_jetzt($polizze) {
+global $user;
+
+	$uid = $user->uid;
+	$userdata = angelio_get_userobject($uid);
+	
+	$output = "<p>Hallo " . $userdata->first_name . "!</p>";
+	
+	db_set_active('angelio_daten');
+	$sql = "SELECT * FROM {tbl_Vertraege_online} vt LEFT JOIN {tbl_Produkte_Online} pr ON vt.ProduktID=pr.ProduktID WHERE KundenID=" . $uid;
+	$result = db_query($sql);	
+	if ($result->rowCount() == "1") {
+ 		$output .= "Mit Bedauern müssen wir feststellen, dass Du unseren Verein verlassen möchtest. Kündigungen innerhalb von 14 Tagen sind sofort wirksam. Alle anderen Kündigungen müssen einen Monat vor Jahresablauf gekündigt werden.<br><br>";
+		$output .= "Wir wünschen Dir weiterhin alles Gute!<br><br>";
+		$output .= '<form title="Den Vertrag jetzt kündigen" action="/kuendigen/' . $polizze . '/sofort" method="post"><input type="hidden" value="' . $polizze . '"><input type="submit" value="Jetzt kündigen"></form>';
+		$output .= "<br><br>P.S.: Solltest Du andere Verträge (Bausparer, …) über angelio abgeschlossen haben, werden Dir die notwendigen Unterlagen per Post zugesandt.";
+	} else {
+		$output .= "Mit Bedauern nehmen wir zur Kenntnis, dass Du eine Unfallversicherung kündigen möchtest. ";
+		$output .= "Kündigungen innerhalb von 14 Tagen sind sofort wirksam. Alle anderen Kündigungen müssen einen Monat vor Jahresablauf gekündigt werden.";		
+		$output .= '<form title="Den Vertrag jetzt kündigen" action="/kuendigen/' . $polizze . '/sofort" method="post"><input type="hidden" value="' . $polizze . '"><input type="submit" value="Jetzt kündigen"></form>';
+		$output .= "<br><br>P.S.: Solltest Du andere Verträge (Bausparer, …) über angelio abgeschlossen haben, werden Dir die notwendigen Unterlagen per Post zugesandt.";
+	}			
+		
+	db_set_active();	
+	return $output;
+}
+
+function angelio_kuendigen_sofort($polizze) {
+global $user;
+
+	$uid = $user->uid;
+	$userdata = angelio_get_userobject($uid);
+
+	$output = "<p>Hallo " . $userdata->first_name . "!</p>";
+	
+	$output .= "Dein Vertrag wird nun gekündigt.";
+
+	// in Datenbank schreiben:
+	
+	db_set_active('angelio_daten');
+	
+	
+	$sql = "SELECT * FROM {tbl_Vertraege_Status} WHERE Polizzennummer='" . $polizze . "'";
+	$result = db_query($sql);
+	
+	if ($result->rowCount() == "0") {
+		$sql = "INSERT INTO {tbl_Vertraege_Status} (Polizzennummer, datGekuendigt) VALUES ('" . $polizze . "', NOW())";	
+		db_query($sql);
+	} else {
+		$sql = "UPDATE {tbl_Vertraege_Status} SET datGekuendigt=NOW() WHERE Polizzennummer='" . $polizze . "'";
+		db_query($sql);		
+	}
+	
+	db_set_active();	
+	
+	// E-Mail senden:
+	
+	$params = array(
+  		'Vorname' => $userdata->first_name,
+  		'Polizze' => $polizze
+	);
+	
+	$to = $userdata->email . ',office@angelio.at';
+	
+	$sent = drupal_mail('angelio', 'kuendigen', $to , language_default(), $params, 'office@angelio.at');
+	
+	if($sent){
+		drupal_set_message('Ein E-Mail wurde zu Ihnen gesendet.', 'status');	
+	} else {
+		drupal_set_message('E-Mail konnte nicht gesendet werden.', 'error');
+	}
+	
+	return $output;
+}
+
+
+function angelio_erweitern($polizze) {
+global $user;
+	$uid = $user->uid;
+	$userdata = angelio_get_userobject($uid);
+
+	$output = "<p>Hallo " . $userdata->first_name . "!</p>";
+	
+ 	$output .= '<p>Hier kannst Du Deine Unfallversicherung aufstocken. Sollten Dir € 100.000,- Grundversicherungssumme zu wenig sein, dann verdopple ganz einfach Deine Grundsumme.</p>
+<p>Bei € 200.000,- ergibt das eine maximale Leistung von € 600.000,- (inklusive der 300%igen Progression).</p>
+<p>Die Zahlungsweise wird von Deinen Stammdaten übernommen. Nach spätestens 48 Stunden wird Deine Bestellung umgesetzt. Eine Kündigungsfrist von 14 Tagen ist natürlich auch hier gegeben.<p>
+
+<p>Wenn Du die Grundsumme erhöht hast, besitzt Du dann zwei eigenständige Verträge, die auf Deinen Namen laufen und somit einzeln jederzeit jährlich kündbar sind.</p>';
+	$output .= "<p>Das ist deine aktuelle Versicherungsbestätigung: <a href='/polizze/" . $uid . "/" . $polizze . "'>" . $polizze . "</a>";
+	
+	$output .= '<form title="Den Vertrag jetzt erweitern" action="/erweitern/' . $polizze . '/jetzt" method="post"><input type="hidden" value="' . $polizze . '"><input type="submit" value="Den Vertrag erweitern"></form>';
+	
+	
+	return $output;
+}
+
+function angelio_erweitern_jetzt($polizze) {
+global $user;
+
+	$uid = $user->uid;
+	$userdata = angelio_get_userobject($uid);
+
+	$output = "<p>Hallo " . $userdata->first_name . "!</p>";
+	
+	db_set_active('angelio_daten');
+	$sql = "SELECT * FROM  tbl_Vertraege_online WHERE Polizzennummer=" . $polizze;
+	$result = db_query($sql)->fetchAssoc();		
+
+	$output .= "<p>Wenn Du jetzt auf kostenpflichtig BESTELLEN drückst, dann wird innerhalb von 48 Stunden eine zweite private Unfallversicherung auf Deinen Namen ausgestellt.</p>";
+
+	$output .= '<form title="Den Vertrag jetzt erweitern" action="/erweitern/' . $polizze . '/sofort" method="post"><input type="hidden" value="' . $polizze . '"><input type="submit" value="kostenpflichtig BESTELLEN"></form>';
+
+	
+	$sql = "SELECT * FROM {tbl_Vertraege_Status} WHERE Polizzennummer='" . $polizze . "'";
+	$result = db_query($sql);
+	
+	if (!$result) {
+		$sql = "INSERT INTO {tbl_Vertraege_Status} (Polizzennummer, datErweitert) VALUES ('" . $polizze . "', NOW())";	
+		db_query($sql);
+	} else {
+		$sql = "UPDATE {tbl_Vertraege_Status} SET datErweitert=NOW() WHERE Polizzennummer='" . $polizze . "'";
+		db_query($sql);		
+	}
+		
+	db_set_active();
+				
+	return $output;
+}
+
+function angelio_erweitern_sofort($polizze) {
+global $user;
+
+	$uid = $user->uid;
+	$userdata = angelio_get_userobject($uid);
+
+	$output = "<p>Hallo " . $userdata->first_name . "!</p>";
+	$output .= "Dein Vertrag $polizze wird nun erweitert.";
+	
+	// in Datenbank schreiben:
+	
+	db_set_active('angelio_daten');
+	$sql = "SELECT * FROM {tbl_Vertraege_Status} WHERE Polizzennummer='" . $polizze . "'";
+	$result = db_query($sql);
+	
+	if (!$result) {
+		$sql = "INSERT INTO {tbl_Vertraege_Status} (Polizzennummer, datErweitert) VALUES ('" . $polizze . "', NOW())";	
+		db_query($sql);
+	} else {
+		$sql = "UPDATE {tbl_Vertraege_Status} SET datErweitert=NOW() WHERE Polizzennummer='" . $polizze . "'";
+		db_query($sql);		
+	}
+	db_set_active();
+
+	// E-Mail senden		
+	$params = array(
+  		'Vorname' => $userdata->first_name,
+  		'Polizze' => $polizze
+	);
+	
+	$to = $userdata->email. ',office@angelio.at';
+	$sent = drupal_mail('angelio', 'erweitern', $to, language_default(), $params, 'office@angelio.at');
+	
+	if($sent){
+		drupal_set_message('Ein E-Mail wurde zu Ihnen gesendet.', 'status');	
+	} else {
+		drupal_set_message('E-Mail konnte nicht gesendet werden.', 'error');
+	}
+	
+	return $output;
+}
+
+function angelio_schaden() {
+global $user;
+
+	$uid = $user->uid;
+	$userdata = angelio_get_userobject($uid);
+
+	$output = "<p>Hallo " . $userdata->first_name . "!</p>";
+
+	$output .= "Unfälle müssen sofort gemeldet werden, um den Richtlinien der Versicherungen zu entsprechen. Daher haben wir hier ein Schadensformular zum Ausdrucken, welches Du mit Deinen Daten ausfüllen und an uns per Post senden musst.
+Zusätzlich bitten wir Dich, uns eine E-Mail zu senden, um uns über einen möglichen Schadenseintritt vorab zu informieren. Alle nötigen Schritte werden wir dann unverzüglich in die Wege leiten.
+<br><br>";
+	$output .= "<p><b>Postadresse:</b><br>Verein angelio Kaufgemeinschaft<br>Aigen 1<br>A-4654 Bad Wimsbach-Neydharting<br></p>";
+
+	$output .= "<h3>Unfallschadensformular hier <a href='/downloads/FormularSchadenUnfall.pdf' target='_blank'>downloaden und ausdrucken...</a></h3>";
+				
+	return $output;
 }
