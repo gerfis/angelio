@@ -143,7 +143,7 @@ Gläubiger-Identifikationsnummer: AT76ZZZ00000016804<br>
 	  '#title' => t('IBAN'),
 	  '#required' => TRUE,
 	  '#element_validate' => array('angelio_iban_validate'),
-	  '#default_value' => 'AT131490022010010999',
+	  //'#default_value' => 'AT131490022010010999',
 	  '#weight' => 2,		
 	);
 	$form['bank']['strBic_O'] = array(
@@ -151,7 +151,7 @@ Gläubiger-Identifikationsnummer: AT76ZZZ00000016804<br>
 	  '#title' => t('BIC'),
 	  '#required' => TRUE,	  
 	  '#element_validate' => array('angelio_bic_validate'),	  
-	  '#default_value' => 'RZOOAT2L510',
+	  //'#default_value' => 'RZOOAT2L510',
 	  '#weight' => 3,	
 	);		
 	
@@ -160,9 +160,9 @@ Gläubiger-Identifikationsnummer: AT76ZZZ00000016804<br>
 	  '#title' => t('Zahlungsweise'),
 	  '#required' => TRUE,
 	  '#options' => array('1'=>'jährlich 240€',
-	  					  '2'=>'halbjährlich 120€',
-	  					  '4'=>'quartalsweise 60€',
-	  					  '12'=>'monatlich 20€'), 
+	  					  '2'=>'halbjährlich 130€',
+	  					  '4'=>'quartalsweise 70€',
+	  					  '12'=>'monatlich 25€'), 
 	  '#weight' => 4,	
 	);
 
@@ -184,16 +184,18 @@ meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 	  '#weight' => 5,
 	);
 	
+	/*
 	$form['bedingungen']['ysnNewsletter_O'] = array(
 	  '#type' => 'checkbox',
 	  '#title' => t('Bitte sendet mir den angelio Newsletter zu.'),
 	  '#attributes' => array('checked' => 'checked'),
 	  '#weight' => 1,
 	);
+	*/
 	
 	$form['bedingungen']['AGB'] = array(
 	  '#type' => 'checkbox',
-	  '#title' => 'Ich habe die <a href="/agb">Allgemeinen Geschäftsbedingungen</a> gelesen und akzeptiere sie.',
+	  '#title' => 'Ich habe die <a target="_blank" href="/agb">Allgemeinen Geschäftsbedingungen</a> gelesen und akzeptiere sie.',
 	  '#element_validate' => array('angelio_agb_validate'),
 	  '#weight' => 2,
 	);
@@ -347,6 +349,7 @@ meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 	  '#weight' => 4,	
 	);
 		
+	/*
 	$form['ysnNewsletter_O'] = array(
 	  '#type' => 'checkboxes',
 	  '#options' => array('1' => 'Bitte sendet mir den angelio Newsletter zu.'),
@@ -354,7 +357,7 @@ meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 	  '#title' => t('Newsletter'),	  
 	  '#weight' => 10,
 	);
- 
+ */
  
 	$form['#submit'][] = 'angelio_user_edit_form_submit';
 	unset($form['contact']);
@@ -439,7 +442,8 @@ function angelio_user_register_form_submit($form, &$form_state) {
 	$strBank_O = '';
 	$strBic_O = $form_state['values']['strBic_O'];
 	$strIban_O = $form_state['values']['strIban_O'];
-	$ysnNewsletter_O = $form_state['values']['ysnNewsletter_O'];
+	//$ysnNewsletter_O = $form_state['values']['ysnNewsletter_O'];
+	$ysnNewsletter_O = '0';
 	$Polizzennummer_O = date("ym") . sprintf("%07d", $KundenID_online) . "0101";
 	$Zahlungsintervall_O = $form_state['values']['Zahlungsintervall_O'];
 	$ysnInaktiv = 0;
@@ -452,7 +456,7 @@ function angelio_user_register_form_submit($form, &$form_state) {
 	'KundenID_online' => $KundenID_online,
 	'strUsername_O' => $strUsername_O,
 	'strEmail_O' => $strEmail_O,
-	'SponsorID_O' => $SponsorID_O,
+	'ReferrerID_O' => $SponsorID_O,
 	'strNName_O' => $strNName_O,
 	'strVName_O' => $strVName_O,
 	'strTitel_O' => $strTitel_O,
@@ -477,6 +481,8 @@ function angelio_user_register_form_submit($form, &$form_state) {
   
   	db_set_active();
 	
+	drupal_set_message("Sponsor: " . $SponsorID_O);
+	
 	if (!$success) {
 		drupal_set_message("Der Benutzer wurde NICHT gespeichert.", 'error');
 		$text = "Der Benutzer wurde NICHT gespeichert.";
@@ -490,7 +496,6 @@ function angelio_user_register_form_submit($form, &$form_state) {
 function angelio_user_edit_form_submit($form, &$form_state) {
 	$KundenID_online = $form_state['values']['KundenID_online'];
 	$strEmail_O = $form_state['values']['mail'];
-	$SponsorID_O = $_SESSION['sponsor_uid'];
 	$strNName_O = $form_state['values']['strNName_O'];
 	$strVName_O = $form_state['values']['strVName_O'];
 	$strTitel_O = $form_state['values']['strTitel_O'];
@@ -506,7 +511,8 @@ function angelio_user_edit_form_submit($form, &$form_state) {
 	$strBank_O = '';
 	$strBic_O = $form_state['values']['strBic_O'];
 	$strIban_O = $form_state['values']['strIban_O'];
-	$ysnNewsletter_O = $form_state['values']['ysnNewsletter_O'][1];
+	//$ysnNewsletter_O = $form_state['values']['ysnNewsletter_O'][1];
+	$ysnNewsletter_O = '0';
 	$Zahlungsintervall_O = $form_state['values']['Zahlungsintervall_O'];	
 	$now = date("Y-m-d H:i:s", time());
 	

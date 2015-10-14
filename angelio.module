@@ -1,5 +1,7 @@
 <?php
 
+// watchdog("my_module", '<pre>' . print_r( $my_array_or_object, true) . '</pre>'); 
+
 // $Id$
 global $base_url;
 global $user;
@@ -9,32 +11,11 @@ if ($user->uid == 1) {
 	require_once('admin.inc');
 }
 
-// Username und Vorname an Javascript übergeben:
-
-/*
- 	// gerfis: geht in D7 einfach nicht
-	$uid = $user->uid;
-	$userdata = angelio_get_userdata($uid);
-	$angelio_settings = array(
-		'username' => $userdata['strUsername_O'],
-		'vorname' => $userdata['strVName_O']
-	);	
-
-	drupal_add_js(array('angelio' => $angelio_settings), 'setting');
-*/
-
 // include IBAN test library
   $path = function_exists('libraries_get_path') ? libraries_get_path('php-iban') : 'sites/all/libraries/php-iban';
   if (!include($path . '/php-iban.php')) {
   }
  
-
-function angelio_get_userdata($uid) {
-	db_set_active('angelio_daten');
-	$userdata = db_query("SELECT * FROM {tbl_Kunden_Online} WHERE KundenID_online='" . $uid . "'")->fetchAssoc();
-	db_set_active(); 
-	return $userdata;
-}
 
 function angelio_init() {
     global $user;
@@ -46,6 +27,7 @@ function angelio_init() {
 	    }
 	}
     drupal_add_css(drupal_get_path('module', 'angelio') . '/angelio.css');
+/*
     global $base_path;
     drupal_add_js("
 $(document).ready(function() {
@@ -54,6 +36,27 @@ $('#angelio img').click(function() {
   window.setTimeout('location.reload()', 500);
 });
 });", 'inline');
+*/
+
+// Username und Vorname an Javascript übergeben:
+
+
+ 	// gerfis: geht in D7 einfach nicht
+	$uid = $user->uid;
+	$userdata = angelio_get_userdata($uid);
+	$angelio_settings = array(
+		'username' => $userdata['strUsername_O'],
+		'vorname' => $userdata['strVName_O']
+	);	
+
+	drupal_add_js(array('angelio' => $angelio_settings), 'setting');
+	
+	/*
+	$element['#attached']['js'][] = array(
+  		'type' => 'setting',
+  		'data' => array('angelio' => array('username' => $userdata['strUsername_O'], 'vorname' => $userdata['strVName_O'])),
+	);
+*/
 
     drupal_add_css(drupal_get_path('module', 'angelio') . '/tree/tree.css');
 	drupal_add_js(drupal_get_path('module', 'angelio') . '/tree/tree.js');
@@ -144,6 +147,12 @@ function angelio_mail($key, &$message, $params) {
 	  $body .= "Username: ". $params['Neueruser']. "\n\n";
       $message['body'][] = $body;
       break;	    
+    case 'testen':
+      // note: data can be passed to this function in the $params array
+      $message['subject'] = "angelio Testmail";
+      $message['body'][] = "Hallo " . $params['Vorname'] . "!\n\nDas ist ein angelio Testmail.\n\nDein angelio Team.";
+      break;
+      
   }
 }
 
@@ -169,6 +178,14 @@ function angelio_menu() {
 		'title' => 'angelio Testdaten',
 		'description' => 'angelio Testdaten anlegen und löschen',
 		'page callback' => 'angelio_admin',
+		'access arguments' => array('administer site configuration'),
+	);
+
+	$items['admin/angelio/testmail'] = array(
+		'title' => 'angelio Testmail',
+		'description' => 'angelio Testmail senden',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('angelio_testmail_form'), 
 		'access arguments' => array('administer site configuration'),
 	);
 
@@ -349,16 +366,14 @@ function angelio_menu() {
         'type' => MENU_CALLBACK,
     );
 		
-		
-		
- /*  
-        $items['mein-angelio'] = array(
-        'title' => 'Mein angelio',
-        'page callback' => 'angelio_meinangelio',
-        'page arguments' => array(0),               
+    $items['schaden'] = array(
+        'title' => 'angelio Unfallschadensmeldung',
+        'page callback' => 'angelio_schaden',
+        'page arguments' => array('0'),                       
         'access arguments' => array('access own downline'),
         'type' => MENU_CALLBACK,
-    );
+    );		
+
 
     $items['visitenkarten'] = array(
         'title' => 'Meine angelio Visitenkarten',
@@ -376,14 +391,7 @@ function angelio_menu() {
         'type' => MENU_CALLBACK,
     );
 	
-    $items['schaden'] = array(
-        'title' => 'angelio Unfallschadensmeldung',
-        'page callback' => 'angelio_schaden',
-        'page arguments' => array('0'),                       
-        'access arguments' => array('access own downline'),
-        'type' => MENU_CALLBACK,
-    );
-	
+
     $items['flyer'] = array(
         'title' => 'Mein angelio Flyer',
         'page callback' => 'angelio_flyer',
@@ -400,6 +408,16 @@ function angelio_menu() {
         'type' => MENU_CALLBACK,
     );
 	
+		
+ /*  
+        $items['mein-angelio'] = array(
+        'title' => 'Mein angelio',
+        'page callback' => 'angelio_meinangelio',
+        'page arguments' => array(0),               
+        'access arguments' => array('access own downline'),
+        'type' => MENU_CALLBACK,
+    );
+
 			
 	// Pager Test items
 	$items['test/pager'] = array(
@@ -426,6 +444,44 @@ function angelio_menu() {
 		
 	return $items;
 }
+
+
+function angelio_testmail_form($form,&$form_state) {
+	$form['vorname'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Dein Vorname',
+		'#required' => TRUE
+	);
+	$form['email'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Deine E-Mail',
+		'#required' => TRUE
+	);
+	
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Submit'),
+	);
+	
+	return $form;		
+}
+
+function angelio_testmail_form_submit(&$form_state) {
+	$params = array();
+	$params['Vorname'] = $form_state['vorname']['#value'];
+	
+	$to = $form_state['email']['#value'];
+	$sent = drupal_mail('angelio', 'testen', $to, language_default(), $params, 'office@angelio.eu');
+	
+	if ($sent['result']) {
+		drupal_set_message('E-Mail an ' . $form_state['vorname']['#value'] . ' an Adresse ' . $form_state['email']['#value'] . ' gesendet.');
+	} else {
+		drupal_set_message('Fehler beim Senden: ' . $sent);
+	}
+	
+	watchdog("my_module", '<pre>' . print_r( $sent, true) . '</pre>'); 
+}
+
 
 function angelio_join() {
 	$_SESSION['sponsor_uid'] = "";
@@ -526,23 +582,75 @@ function query_debug($query){
 
 function angelio_user_presave(&$edit, $account, $category) {
 	// Benutzer bei der Aktivierung in die Matrix platzieren:
-	
-  if ($account->uid // user is not new
-      && $account->status === "0" && $edit['status']==1) { // user is being activated
 
-    // Benutzer Rolle setzen
-	if ($role = user_role_load_by_name('BRONCE')) {
-        user_multiple_role_edit(array($account->uid), 'add_role', $role->rid);
-		drupal_set_message("Dem Benutzer wurde der Status 'BRONCE' zugeteilt.");
-      }    
-    
- 	// Member in Matrix platzieren:
-    $member = angelio_get_userobject($account->uid);
-	angelio_inMatrix($member->member_id, $member->sponsor_id);
-	drupal_set_message("Sie wurden in der Matrix platziert.");
+  if ($account->uid) { // user is not new
+	  if ($account->status === "0" && isset($edit['status']) && $edit['status']==1) { // user is being activated
+
+	    // Benutzer Rolle setzen
+		if ($role = user_role_load_by_name('BRONCE')) {
+	        //user_multiple_role_edit(array($account->uid), 'add_role', $role->rid);
+	        $user = user_load($account->uid);
+			$user->roles = $user->roles + array($role->rid => $role->name);
+			user_save($user);
+			
+			db_set_active('angelio_daten');
+			// Dem Member die host_id eintragen
+			db_update('tbl_Kunden_Online')
+				->fields(array('bonuslevel' => 2))
+				->condition('KundenID_online', $account->uid, '=')
+				->execute();
+			db_set_active();
+			
+			drupal_set_message("Willkommen! Ihnen wurde der Status 'BRONCE' zugeteilt.");
+	      }    
+	    
+	 	// Member in Matrix platzieren:
+	    $member = angelio_get_userobject($account->uid);
+		angelio_inMatrix($member->member_id, $member->sponsor_id);
+		$member = angelio_get_userobject($account->uid); // jetzt erst ist die Upline gesetzt!
+		drupal_set_message("Sie wurden in der Matrix platziert.");
+	  
+		// E-Mail an Upline senden
+		
+		$level = 1;
+		$sponsor = angelio_get_userdata($member->upline_id);	
+		$UplineID_O = $member->upline_id;
+		$params = array();
+
+		// solange nicht oben angekommen und Level < 10: 
+		while ($UplineID_O > 0 && $level < 10) {
+	
+			$upline = angelio_get_userdata($UplineID_O);
+			$UplineID_O = $upline['SponsorID_O'];  
+			
+			$params = array(
+				'Uplinename' => $upline['strVName_O'],
+		  		'Sponsorname' => $sponsor['strUsername_O'],
+		  		'Neuervname' => $member->first_name,
+		  		'Neuernname' => $member->last_name,
+		  		'Neueruser' => $member->username
+			);
+			
+			$to = $upline['strEmail_O'];
+			$sent = drupal_mail('angelio', 'upline', $to, language_default(), $params, 'office@angelio.at');
+			
+			$level++;
+		}
+			
+		
+		//$to = "fischervorchdorf@gmx.at;office@angelio.at";
+		$to = "office@boucado.space;office@angelio.at";
+		$sent = drupal_mail('angelio', 'neuer', $to, language_default(), $params, 'office@angelio.at');
+	  }
   }
 }
 
+function angelio_get_userdata($uid) {
+	db_set_active('angelio_daten');
+	$userdata = db_query("SELECT * FROM {tbl_Kunden_Online} WHERE KundenID_online='" . $uid . "'")->fetchAssoc();
+	db_set_active(); 
+	return $userdata;
+}
 
 function angelio_get_username($member_id) {
 // Member holen
@@ -809,10 +917,10 @@ global $user;
 	$output = "<p>Die Genealogie ist die tatsächlich gesponserte, nicht in die 3x9 Matrix gepresste Downline.</p>";
 	
 	db_set_active('angelio_daten');
-	$sql = "SELECT KundenID_online, strUsername_O, strVName_O, strNName_O, strEmail_O, strTelefon_O, ysnInaktiv FROM {tbl_Kunden_Online} WHERE KundenID_online=" . $userdata->upline_id;
+	$sql = "SELECT KundenID_online, strUsername_O, strVName_O, strNName_O, strEmail_O, strTelefon_O, ysnInaktiv FROM {tbl_Kunden_Online} WHERE KundenID_online=" . $userdata->sponsor_id;
 	$row = db_query($sql)->fetchAssoc();  
 	
-	$output .= "<hr><h3>Upline</h3>";
+	$output .= "<hr><h3>Dein Sponsor</h3>";
 	$output .= '<table class="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
 	$aktiv = ($row['ysnInaktiv'] == 0) ? 'Ja' : 'Nein';
 	if (user_access('access all downlines')) {
@@ -820,8 +928,8 @@ global $user;
 	} else {
 		$output .= '<tr><td <td class="tblDownlineUName">' . $row['strUsername_O'] . '</td><td class="tblDownlineVName">' . $row['strVName_O'] . '</td><td class="tblDownlineVName">' . $row['strNName_O'] . '</td><td class="tblDownlineEmail">' . $row['strEmail_O'] . '</td><td class="tblDownlineTelefon">' . $row['strTelefon_O'] . '</td><td class="tblDownlineAktiv">' . $aktiv . '</td></tr>';
 	}
-	$output .= '</table>'; 
-		
+	$output .= '</table>';	
+	
 	$sql = "SELECT KundenID_online, strUsername_O, strVName_O, strNName_O, strEmail_O, strTelefon_O, ysnInaktiv FROM tbl_Kunden_Online WHERE ReferrerID_O=" . $userdata->member_id;
 	$result = db_query($sql);
 	
@@ -862,19 +970,20 @@ global $user;
 		$gesamt += $level['count']; 
 	}
 	
+	
 	for ($i = 1; $i < 10; $i++) {
 		$output .= "Level " . $i . ": " . $levels[$i] . "<br>";
 	}
 	$output .= "<p><b>" . t("Total") . ": ". $gesamt . "</b></p>";
 
-	$output .= "<h3>Bonuslevels:</h3>";
-	$output .= "FREE: " . $bonuslevels['FREE'] . "<br>";	
+	/*
+	$output .= "<h3>Bonuslevels:</h3>";	
 	$output .= "BRONCE: " . $bonuslevels['BRONCE'] . "<br>";
 	$output .= "SILVER: " . $bonuslevels['SILVER'] . "<br>";
 	$output .= "GOLD: " . $bonuslevels['GOLD'] . "<br>";
-	$output .= "PLATIN: " . $bonuslevels['PLATIN'] . "<br>";
 	$output .= "<br><hr><br>";
-			
+	*/
+		
 	$output .= $tree;
 	
 	return $output;
@@ -894,10 +1003,10 @@ global $user;
 	$output ="";
 	
 	db_set_active('angelio_daten');
-	$sql = "SELECT KundenID_online, strUsername_O, strVName_O, strNName_O, strEmail_O, strTelefon_O, ysnInaktiv FROM {tbl_Kunden_Online} WHERE KundenID_online=" . $userdata->upline_id;
+	$sql = "SELECT KundenID_online, strUsername_O, strVName_O, strNName_O, strEmail_O, strTelefon_O, ysnInaktiv FROM {tbl_Kunden_Online} WHERE KundenID_online=" . $userdata->sponsor_id;
 	$row = db_query($sql)->fetchAssoc();  
 	
-	$output = "<hr><h3>Upline</h3>";
+	$output .= "<hr><h3>Dein Sponsor</h3>";
 	$output .= '<table class="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
 	$aktiv = ($row['ysnInaktiv'] == 0) ? 'Ja' : 'Nein';
 	if (user_access('access all downlines')) {
@@ -905,7 +1014,19 @@ global $user;
 	} else {
 		$output .= '<tr><td <td class="tblDownlineUName">' . $row['strUsername_O'] . '</td><td class="tblDownlineVName">' . $row['strVName_O'] . '</td><td class="tblDownlineVName">' . $row['strNName_O'] . '</td><td class="tblDownlineEmail">' . $row['strEmail_O'] . '</td><td class="tblDownlineTelefon">' . $row['strTelefon_O'] . '</td><td class="tblDownlineAktiv">' . $aktiv . '</td></tr>';
 	}
-	$output .= '</table>';
+	$output .= '</table>';	
+	
+	$sql = "SELECT KundenID_online, strUsername_O, strVName_O, strNName_O, strEmail_O, strTelefon_O, ysnInaktiv FROM {tbl_Kunden_Online} WHERE KundenID_online=" . $userdata->upline_id;
+	$row = db_query($sql)->fetchAssoc();  	
+	$output .= "<hr><h3>Deine 3x9 Matrix Upline</h3>";
+	$output .= '<table class="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
+	$aktiv = ($row['ysnInaktiv'] == 0) ? 'Ja' : 'Nein';
+	if (user_access('access all downlines')) {
+		$output .= '<tr><td <td class="tblDownlineUName"><a href="/downline/' . $row['KundenID_online'] . '">' . $row['strUsername_O'] . '</a></td><td class="tblDownlineVName">' . $row['strVName_O'] . '</td><td class="tblDownlineVName">' . $row['strNName_O'] . '</td><td class="tblDownlineEmail">' . $row['strEmail_O'] . '</td><td class="tblDownlineTelefon">' . $row['strTelefon_O'] . '</td><td class="tblDownlineAktiv">' . $aktiv . '</td></tr>';
+	} else {
+		$output .= '<tr><td <td class="tblDownlineUName">' . $row['strUsername_O'] . '</td><td class="tblDownlineVName">' . $row['strVName_O'] . '</td><td class="tblDownlineVName">' . $row['strNName_O'] . '</td><td class="tblDownlineEmail">' . $row['strEmail_O'] . '</td><td class="tblDownlineTelefon">' . $row['strTelefon_O'] . '</td><td class="tblDownlineAktiv">' . $aktiv . '</td></tr>';
+	}
+	$output .= '</table>'; 
 		
 	$sql = "SELECT KundenID_online, strUsername_O, strVName_O, strNName_O, strEmail_O, strTelefon_O, ysnInaktiv FROM tbl_Kunden_Online WHERE SponsorID_O=" . $userdata->member_id;
 	$result = db_query($sql);
@@ -944,6 +1065,8 @@ global $user;
 	
 	$statistik = array();
 	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILVER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+	
+	
 	$output .= "<h3>Bonuslevel: " . $title . "</h3>";
 	$output .= "<h3>" . t("Paylevels: ") . $depth . "</h3>";
 
@@ -967,13 +1090,13 @@ global $user;
 	}
 	$output .= "<p><b>" . t("Total") . ": ". $gesamt . "</b></p>";
 	
+	/*
 	$output .= "<h3>Bonuslevels:</h3>";
 	$output .= "BRONCE: " . $bonuslevels['BRONCE'] . "<br>";
 	$output .= "SILVER: " . $bonuslevels['SILVER'] . "<br>";
 	$output .= "GOLD: " . $bonuslevels['GOLD'] . "<br>";
-	$output .= "PLATIN: " . $bonuslevels['PLATIN'] . "<br>";
-	
 	$output .= "<br><hr><br>";
+	*/
 		
 	$output .= $tree;
 	
@@ -1273,8 +1396,8 @@ global $user;
 	
 	$sql = "SELECT * FROM {tbl_Vertraege_online} vt LEFT JOIN {tbl_Produkte_Online} pr ON vt.ProduktID=pr.ProduktID WHERE ysnStorniert='0' AND KundenID=" . $uid;
 	$result = db_query($sql);	
-	
-	if ($result) {
+
+	if ($result->rowCount()) {
   		$output .= '<table id="tblCommissionVertraege"><tr><th class="tblCommissionCol1">Produkt</th><th class="tblCommissionCol2">Versicherungsbestätigung</th><th class="tblCommissionCol3">Abschluss</th><th class="tblCommissionCol4">Vertrag</th><tr>';
 		while ($row = $result->fetchAssoc()) {
 			// wurde die Polizze schon erweitert?
@@ -1359,7 +1482,7 @@ global $user;
 	
 	db_set_active('angelio_daten');
 
-	$sql = "SELECT sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision FROM {tbl_stat_Kunden_Downlines} WHERE sponsorID=" . $userdata->member_id;
+	$sql = "SELECT sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision FROM {tbl_stat_Kunden_Downlines} WHERE lngLevel > 0 AND sponsorID=" . $userdata->member_id;
 	$row = db_query($sql)->fetchAssoc();
 	$summe_kunden = $row['Kunden'];
 	$summe_provision = $row['Provision'];
@@ -1371,7 +1494,7 @@ global $user;
 
 	$output = "<hr><br><h3>Verdienst nach Ebenen gesamt:</h3>";
 
-	$sql = "SELECT * FROM {tbl_stat_Kunden_Downlines} WHERE sponsorID=" . $userdata->member_id;
+	$sql = "SELECT * FROM {tbl_stat_Kunden_Downlines} WHERE lngLevel > 0 AND sponsorID=" . $userdata->member_id;
 	
 	$result = db_query($sql);
 			
@@ -1380,7 +1503,7 @@ global $user;
 		$output .= '<tr><td class="tblCommissionCol1">' . $row['lngLevel'] . '</td><td class="tblCommissionCol2">' . $row['intAnzahlKunden'] . '</td><td class="tblCommissionCol3">' . $row['dblLaufend'] . '&euro;</td></tr>';
 	} 
 
-	$sql = "SELECT sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision FROM {tbl_stat_Kunden_Downlines} WHERE sponsorID=" . $userdata->member_id;
+	$sql = "SELECT sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision FROM {tbl_stat_Kunden_Downlines} WHERE lngLevel > 0 AND sponsorID=" . $userdata->member_id;
 	$row = db_query($sql)->fetchAssoc();
 	
 	$output .= '<tr><td class="tblCommissionCol1"><b>Summe:</b></td><td class="tblCommissionCol2"><b>' . $summe_kunden . '</b></td><td class="tblCommissionCol3"><b>' . $summe_provision . '&euro;</b></td></tr>'; 
@@ -1394,7 +1517,7 @@ global $user;
 	
 	$output .= '<table id="tblCommissionEbenen"><tr><th class="tblCommissionCol1">Frontline</th><th class="tblCommissionCol2">Anzahl Mitglieder</th><th class="tblCommissionCol3">Laufende Provision</th><th class="tblCommissionCol3">Aktiv</th><tr>';		
 	while ($row = $result->fetchAssoc()) {
-		$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision, strUsername_O as Kunde, ysnInaktiv as Aktiv FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 9 AND kd.sponsorID=" . $row['KundenID_online'];
+		$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision, strUsername_O as Kunde, ysnInaktiv as Aktiv FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 9 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
 		$row = db_query($sql)->fetchAssoc();
 		$aktiv = ($row['Aktiv'] == 0) ? 'Ja' : 'Nein';
 		$kunden = ($row['Kunden'] == "") ? '0' : $row['Kunden'];
@@ -1424,7 +1547,7 @@ global $user;
 	
 	$output .= "<hr><br><h3>Provisionen gesamt:</h3>";
 
-	$sql = "SELECT strBonusart, sum(dblBetrag) as Summe FROM {tbl_Konto_online} WHERE SponsorID=" . $userdata->member_id . " GROUP BY strBonusart ORDER BY strBonusart";
+	$sql = "SELECT strBonusart, sum(dblBetrag) as Summe FROM {tbl_Konto_online} WHERE datAbrechnungsdatum <= NOW() AND SponsorID=" . $userdata->member_id . " GROUP BY strBonusart ORDER BY strBonusart";
 	$result = db_query($sql);
 			
 	$output .= '<table id="tblCommissionMonate"><tr><th class="tblCommissionCol2">Bonusart</th><th class="tblCommissionCol3">Summe Provision</th><tr>';
@@ -1521,7 +1644,7 @@ global $user;
 	db_set_active('angelio_daten'); 
 
 	$query = db_select("tbl_Konto_online",'ko')
-	->extend('PagerDefault')->limit(15)
+	->extend('PagerDefault')->limit(50)
 	->extend('TableSort')->orderByHeader($tblheader); 		
 	$query->leftJoin('tbl_Produkte_Online','pr', 'ko.ProduktID=pr.ProduktID');
 	$query->leftJoin('tbl_Kunden_Online','ku', 'ko.KundenID=ku.KundenID_online');
@@ -1793,4 +1916,189 @@ Zusätzlich bitten wir Dich, uns eine E-Mail zu senden, um uns über einen mögl
 	$output .= "<h3>Unfallschadensformular hier <a href='/downloads/FormularSchadenUnfall.pdf' target='_blank'>downloaden und ausdrucken...</a></h3>";
 				
 	return $output;
+}
+
+function angelio_visitenkarten($uid) {
+global $user;
+
+	if($uid!='0') {
+		$userdata = angelio_get_userdata($uid);
+	} else {
+		$uid = $user->uid;
+		$userdata = angelio_get_userdata($uid);
+	}
+	
+	$username = $userdata['strUsername_O']; 
+	$vorname = $userdata['strVName_O'];
+	$nachname = $userdata['strNName_O'];
+	$telefon = $userdata['strTelefon_O'];
+	$mobil = $userdata['strMobil_O'];
+	$email = $userdata['strEmail_O'];
+
+	if ($mobil != "") 
+		{$telefon = $mobil; }
+	 
+	require_once('sites/all/libraries/tcpdf/tcpdf.php');
+		
+	$pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+	
+	// set document information
+	$pdf->SetCreator(PDF_CREATOR);
+	$pdf->SetAuthor('angelio');
+	$pdf->SetTitle('angelio Visitenkarten');
+	$pdf->SetSubject('Meine angelio Visitenkarten');
+	$pdf->SetKeywords('angelio, Visitenkarten');
+	
+	// remove default header/footer
+	$pdf->setPrintHeader(false);
+	$pdf->setPrintFooter(false);
+	
+	// set default monospaced font
+	$pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
+	
+	// set margins
+	$pdf->SetMargins(10, 10, 5);
+	$pdf->SetFooterMargin(0);
+	// set auto page breaks
+	$pdf->SetAutoPageBreak(FALSE, 5);
+	
+	// set image scale factor
+	$pdf->setImageScale(1.3);
+	
+$pdf->SetFont('helvetica', 'B', 20);
+$pdf->SetCellPadding(0);
+$tagvs = array('p' => array(0 => array('h' => 0, 'n' => 0), 1 => array('h' => 0, 'n'=> 0)));
+$pdf->setHtmlVSpace($tagvs);
+$pdf->setCellHeightRatio(1.25);
+
+// add a page
+$pdf->AddPage();
+
+$pdf->SetFont('helvetica', '', 8);
+
+// -----------------------------------------------------------------------------
+
+$tbl = <<<EOT
+<table cellspacing="0" cellpadding="0" border="0">
+    <tr>
+    <td width="50%">
+	    <table width="320px">
+	    <tr>
+	    	<td></td><td><img src="/angelio-logo.jpg" align="right"></td>
+	    </tr>
+	    <tr>
+	    	<td colspan="2"><img alt="" src="/sites/default/files/images/yellow-line.png" style="width: 310px; height: 2px; "></td>
+	    </tr>
+	    <tr>
+	    	<td width="230"><span style="font-size:18px; margin-top:10px;">$vorname<br>$nachname</span><br /><br /><span style="font-size:11px;">$telefon<br>$email<br /></span></td>
+	    	<td width="90" valign="top" ><img align="right" src="http://www.angelio.at/qr/?data=www.angelio.at%2Fjoin%2F$username" alt="QR Code" width="80" height="80" /></td>
+	    </tr>
+	    <tr>
+	    	<td colspan="2"><span style="font-size:14px; color:#0060B1;">www.angelio.at/join/$username</span><br /><br />&nbsp;<br />&nbsp;</td>
+	    </tr>
+	    </table>
+	</td>
+    <td width="50%" align="right">
+	    <table width="320px" align="left">
+	    <tr>
+	    	<td></td><td><img src="/angelio-logo.jpg" align="right"></td>
+	    </tr>
+	    <tr>
+	    	<td colspan="2"><img alt="" src="/sites/default/files/images/yellow-line.png" style="width: 310px; height: 2px; "></td>
+	    </tr>
+	    <tr>
+	    	<td width="230"><span style="font-size:18px; margin-top:10px;">$vorname<br>$nachname</span><br /><br /><span style="font-size:11px;">$telefon<br>$email<br /></span></td>
+	    	<td width="90" valign="top" ><img align="right" src="http://www.angelio.at/qr/?data=www.angelio.at%2Fjoin%2F$username&size=150x150" alt="QR Code" width="80" height="80" /></td>
+	    </tr>
+	    <tr>
+	    	<td colspan="2"><span style="font-size:14px; color:#0060B1;">www.angelio.at/join/$username</span><br /><br />&nbsp;<br />&nbsp;</td>
+	    </tr>
+	    </table>
+	</td>
+    </tr>
+</table>
+EOT;
+
+
+$pdf->writeHTML($tbl . $tbl . $tbl . $tbl . $tbl, true, false, false, false, '');
+	
+	// ---------------------------------------------------------
+	
+	//Close and output PDF document
+	$pdf->Output('angelio-visitenkarten.pdf', 'I');
+
+	return "";
+}
+function angelio_flyer($uid) {
+global $user;
+
+	if($uid!='0') {
+		$userdata = angelio_get_userdata($uid);
+	} else {
+		$uid = $user->uid;
+		$userdata = angelio_get_userdata($uid);
+	}
+	
+	$username = $userdata['strUsername_O']; 
+	$vorname = $userdata['strVName_O'];
+	$nachname = $userdata['strNName_O'];
+	$telefon = $userdata['strTelefon_O'];
+	$mobil = $userdata['strMobil_O'];
+	$email = $userdata['strEmail_O'];
+
+	if ($mobil != "") 
+		{$telefon = $mobil; }
+	 
+	require_once('sites/all/libraries/tcpdf/tcpdf.php');
+
+	// create new PDF document
+	$pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+	
+	// set document information
+	$pdf->SetCreator(PDF_CREATOR);
+	$pdf->SetAuthor('angelio');
+	$pdf->SetTitle('angelio Flyer A4');
+	$pdf->SetSubject('angelio Flyer A4');
+	$pdf->SetKeywords('angelio');
+	
+	// remove default header/footer
+	$pdf->setPrintHeader(false);
+	$pdf->setPrintFooter(false);
+	
+	// set default monospaced font
+	$pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
+	
+	// set margins
+	$pdf->SetMargins(0, 0, 0);
+	$pdf->SetHeaderMargin(0);
+	$pdf->SetFooterMargin(0);
+	
+	// set auto page breaks
+	$pdf->SetAutoPageBreak(FALSE);
+	
+	// set image scale factor
+	$pdf->setImageScale(1);
+	
+	// -------------------------------------------------------------------
+	
+	// add a page
+	$pdf->AddPage();
+	
+	// set JPEG quality
+	$pdf->setJPEGQuality(90);
+	
+	// Image method signature:
+	// Image($file, $x='', $y='', $w=0, $h=0, $type='', $link='', $align='', $resize=false, $dpi=300, $palign='', $ismask=false, $imgmask=false, $border=0, $fitbox=false, $hidden=false, $fitonpage=false)
+	
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	
+	// Image example with resizing
+	$pdf->Image('http://www.angelio.at/downloads/angelio_flyer_A4_leer.jpg', 5, 5, 200 , 282, 'JPG', '', '', true, 300, '', false, false, 0, false, false, false);
+	$pdf->Image('http://www.angelio.at/qr/?data=www.angelio.at%2Fjoin%2F' . $username, 177, 139, 14 , 14, 'PNG', '', '', true, 300, '', false, false, 0, false, false, false);
+	$pdf->SetXY(90,275);
+	$pdf->Write(0, 'Mehr auf: www.angelio.at/join/' . $username, '', 0, 'L', true, 0, false, false, 0);
+	// -------------------------------------------------------------------
+	
+	//Close and output PDF document
+	$pdf->Output('angelio_flyer_A4.pdf', 'I');
 }
