@@ -481,15 +481,20 @@ function angelio_user_register_form_submit($form, &$form_state) {
   
   	db_set_active();
 	
-	drupal_set_message("Sponsor: " . $SponsorID_O);
-	
 	if (!$success) {
 		drupal_set_message("Der Benutzer wurde NICHT gespeichert.", 'error');
-		$text = "Der Benutzer wurde NICHT gespeichert.";
 	}
 	else {
-		drupal_set_message("Der Benutzer wurde gespeichert.");
-		$text = "Der Benutzer wurde gespeichert!";		
+		
+	 	// Member in Matrix platzieren:
+	    $member = angelio_get_userobject($userinfo['uid']);
+		angelio_inMatrix($member->member_id, $member->sponsor_id);
+		$member = angelio_get_userobject($userinfo['uid']); // jetzt erst ist die Upline gesetzt!
+		
+		// Alles Ok
+		drupal_set_message("Hallo " . $member->firstname . "! Willkommen bei angelio! Sie wurden in der Matrix platziert.");
+		drupal_set_message("Ihr Sponsor: " . $_SESSION['sponsor_name']);
+		drupal_set_message("Ihre Matrix-Upline: " . $member->upline_first_name . " " . $member->upline_last_name . " (" . $member->upline . ")");
 	}
 }
 

@@ -46,6 +46,10 @@ body {}
 	background-color:#666;
 }
 
+.FREE {
+	text-decoration:line-through;
+}
+
 .schwebend {
 	border:1px dashed #666;
 } 

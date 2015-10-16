@@ -581,17 +581,22 @@ function query_debug($query){
 }
 
 function angelio_user_presave(&$edit, $account, $category) {
-	// Benutzer bei der Aktivierung in die Matrix platzieren:
 
   if ($account->uid) { // user is not new
 	  if ($account->status === "0" && isset($edit['status']) && $edit['status']==1) { // user is being activated
 
+	  
 	    // Benutzer Rolle setzen
 		if ($role = user_role_load_by_name('BRONCE')) {
-	        //user_multiple_role_edit(array($account->uid), 'add_role', $role->rid);
+			// Funktioniert einfach nicht...
+			  
+	        // user_multiple_role_edit(array($account->uid), 'add_role', $role->rid);
+
+	        /* auch nicht
 	        $user = user_load($account->uid);
 			$user->roles = $user->roles + array($role->rid => $role->name);
 			user_save($user);
+			*/
 			
 			db_set_active('angelio_daten');
 			// Dem Member die host_id eintragen
@@ -601,18 +606,14 @@ function angelio_user_presave(&$edit, $account, $category) {
 				->execute();
 			db_set_active();
 			
-			drupal_set_message("Willkommen! Ihnen wurde der Status 'BRONCE' zugeteilt.");
+			drupal_set_message("Willkommen bei angelio! Ihnen wurde der Status 'BRONCE' zugeteilt.");
 	      }    
 	    
-	 	// Member in Matrix platzieren:
-	    $member = angelio_get_userobject($account->uid);
-		angelio_inMatrix($member->member_id, $member->sponsor_id);
-		$member = angelio_get_userobject($account->uid); // jetzt erst ist die Upline gesetzt!
-		drupal_set_message("Sie wurden in der Matrix platziert.");
-	  
+ 
 		// E-Mail an Upline senden
 		
 		$level = 1;
+		$member = angelio_get_userobject($account->uid);
 		$sponsor = angelio_get_userdata($member->upline_id);	
 		$UplineID_O = $member->upline_id;
 		$params = array();
@@ -637,8 +638,6 @@ function angelio_user_presave(&$edit, $account, $category) {
 			$level++;
 		}
 			
-		
-		//$to = "fischervorchdorf@gmx.at;office@angelio.at";
 		$to = "office@boucado.space;office@angelio.at";
 		$sent = drupal_mail('angelio', 'neuer', $to, language_default(), $params, 'office@angelio.at');
 	  }
@@ -1135,7 +1134,7 @@ function angelio_downline_tree(&$statistik, &$bonuslevels, $uid, $sponsor_id, $l
 			$bonustitle = $levels[0]->title;
 			$bonuslevels[$bonustitle] = $bonuslevels[$bonustitle] + 1; 
 			db_set_active();
-			$output .= '<span class="status-' . $member_status . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . ' ' . $bonustitle . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name . ' (' . substr($bonustitle,0,1) . ')</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
+			$output .= '<span class="status-' . $member_status . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . ' ' . $bonustitle . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name . '&nbsp;</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
   		}
  		db_set_active();
 		return $output;
