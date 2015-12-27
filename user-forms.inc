@@ -14,25 +14,52 @@ global $user;
 		$sponsor_name = $_SESSION['sponsor_name'];
 	} 
 
+	// hilfe öffnen link:
+	$form['account']['script'] = array(
+		'#markup' => '<script>
+
+(function ($) {
+  Drupal.behaviors.angelio = {
+    attach: function (context, settings) {
+		$(".form_expand", context).click(function () {
+    $header = $(this);
+    //getting the next element
+    $content = $header.next();
+    //open up the content needed - toggle the slide- if visible, slide up, if not slidedown.
+    $content.slideToggle(300, function () {
+        //execute this after slideToggle is done
+        //change text of header based on visibility of content div
+        $header.html(function () {
+            //change text based on condition
+            return $content.is(":visible") ? "<span class=\"form_hilfe\">Hilfe schließen...</span>" : "<span class=\"form_hilfe\">Hilfe öffnen...</span>";
+        });
+    });
+
+	});
+      }}})(jQuery);
+</script>',
+		
+	);
 
 	$form['account']['name'] = array(
-	    '#title' => t('username'),
-	    '#description' => 'Wählen Sie hier einen Benutzernamen nach Ihren Wünschen, aber beachten Sie unten angeführte Regeln. Der Benutzername ist sehr wichtig für Sie und kann nicht mehr geändert werden! Einerseits benötigen Sie ihn, um sich bei angelio einzuloggen. 
-Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitglieder anwerben, damit das System weiß, wer wen geworben hat und wir dadurch die Werbeprämie an Sie ausbezahlen können. <br><b>Regeln:</b> Der Benutzername muss zwischen 3 und 15 Zeichen lang sein und darf keine Leerzeichen, Satzzeichen und Sonderzeichen enthalten. Beispiele: RUDI1963, RudiPur, Winner1.<br>Sollte ein Benutzername bereits im System vorhanden sein, dann müssen Sie einen anderen wählen.<br>WÄHLEN SIE DEN BENUTZERNAMEN MIT BEDACHT! ER KANN SPÄTER NICHT MEHR GEÄNDERT WERDEN!',
+	    '#title' => 'Benutzername aussuchen',
+	    '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">Wählen Sie hier einen Benutzernamen nach Ihren Wünschen, aber beachten Sie unten angeführte Regeln. Der Benutzername ist sehr wichtig für Sie und kann nicht mehr geändert werden! Einerseits benötigen Sie ihn, um sich bei angelio einzuloggen. 
+Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitglieder anwerben, damit das System weiß, wer wen geworben hat und wir dadurch die Werbeprämie an Sie ausbezahlen können. <br><b>Regeln:</b> Der Benutzername muss zwischen 3 und 15 Zeichen lang sein und darf keine Leerzeichen, Satzzeichen und Sonderzeichen enthalten. Beispiele: RUDI1963, RudiPur, Winner1.<br>Sollte ein Benutzername bereits im System vorhanden sein, dann müssen Sie einen anderen wählen.<br>WÄHLEN SIE DEN BENUTZERNAMEN MIT BEDACHT! ER KANN SPÄTER NICHT MEHR GEÄNDERT WERDEN!</div>',
 	    '#type' => 'textfield',
 	    '#required' => TRUE,
 	    '#weight' => -1,
 	);
-
+	
+	$form['account']['mail']['#description'] = '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">Eine gültige E-Mail-Adresse. Alle E-Mails der Website werden an diese Adresse geschickt. Die Adresse wird nicht veröffentlicht und wird nur verwendet, wenn Sie ein neues Passwort anfordern oder wenn Sie einstellen, bestimmte Informationen oder Benachrichtigungen per E-Mail zu erhalten.</div>';
+	
 	$form['benutzer'] = array(
 	  '#type' => 'fieldset',
-	  '#title' => t('angelio Informationen'),
 	  '#weight' => 1,
 	);
 	
 	$form['benutzer']['sponsor'] = array(
-	  '#title' => t('Sponsor'),
-	  '#description' => 'Der Sponsor ist jene Person, welche Sie als Mitglied zum Verein angelio anwerben möchte. Wenn das Feld leer ist, dann müssen Sie hier den Benutzernamen der Person einfügen, die Ihnen angelio empfohlen hat.',
+	  '#title' => 'Wer hat dir den Verein angelio empfohlen?',
+	  '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">Wenn das Feld leer ist, dann müssen Sie hier den Benutzernamen der Person einfügen, die Ihnen angelio empfohlen hat.</div>',
 	  '#type' => 'textfield',
 	  '#element_validate' => array('angelio_sponsor_validate'),
 	  '#required' => TRUE,
@@ -43,7 +70,7 @@ Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitgliede
 
 	$form['personal'] = array(
 	  '#type' => 'fieldset',
-	  '#title' => t('Kontakt Informationen'),
+	  '#title' => '<strong>' . t('Kontakt Informationen') . '</strong>',
 	  '#weight' => 2,
 	);
 	$form['personal']['strTitel_O'] = array(
@@ -105,7 +132,7 @@ Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitgliede
 
 	$form['alter'] = array(
 	  '#type' => 'fieldset',
-	  '#title' => t('Alter'),
+	  '#title' => '<strong>' . t('Alter') . '</strong>',
 	  '#weight' => 3,
 	);
 	
@@ -119,22 +146,16 @@ Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitgliede
 	  ),
 	  '#required' => TRUE,  
 	  '#element_validate' => array('angelio_geburtstag_validate'),
-	  '#description' => '<p>Um Mitglied beim Verein angelio zu werden, bedarf es für Minderjährige (unter 18 Jahre) der ausdrücklichen Zustimmung eines Erziehungsberechtigten.
+	  '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse"><p>Um Mitglied beim Verein angelio zu werden, bedarf es für Minderjährige (unter 18 Jahre) der ausdrücklichen Zustimmung eines Erziehungsberechtigten.
 Wir benötigen in diesem Fall eine Einverständniserklärung, die Sie <a href="/downloads/Einverstaendniserklaerung.pdf" target="_blank">hier ausdrucken</a> können. Per Fax, E-Mail oder Post muss diese unverzüglich an uns gesendet werden.
-Sollten wir die Einverständniserklärung nicht innerhalb der gesetzlichen Kündigungsfrist von 14 Tagen erhalten, dann müssen wir von uns aus eine Kündigung des minderjährigen Mitglieds durchführen.</p>',
+Sollten wir die Einverständniserklärung nicht innerhalb der gesetzlichen Kündigungsfrist von 14 Tagen erhalten, dann müssen wir von uns aus eine Kündigung des minderjährigen Mitglieds durchführen.</p></div>',
 	  '#weight' => 1,	
 	);
 	
 	
 	$form['bank'] = array(
 	  '#type' => 'fieldset',
-	  '#title' => t('Bankverbindung'),
-	  '#description' => 'Zahlungsempfänger:<br>Verein angelio Kaufgemeinschaft<br>
-Aigen 1 8<br>
-A-4654 Bad Wimsbach-Neydharting<br>
-<br>
-Gläubiger-Identifikationsnummer: AT76ZZZ00000016804<br>
-(Creditor ID)<br>',
+	  '#title' => '<strong>' . t('Bankverbindung') . '</strong>',
 	  '#weight' => 4,
 	);
 
@@ -152,6 +173,12 @@ Gläubiger-Identifikationsnummer: AT76ZZZ00000016804<br>
 	  '#required' => TRUE,	  
 	  '#element_validate' => array('angelio_bic_validate'),	  
 	  //'#default_value' => 'RZOOAT2L510',
+	  '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">Zahlungsempfänger:<br>Verein angelio Kaufgemeinschaft<br>
+Aigen 1<br>
+A-4654 Bad Wimsbach-Neydharting<br>
+<br>
+Gläubiger-Identifikationsnummer: AT76ZZZ00000016804<br>
+(Creditor ID)<br></div>',	  
 	  '#weight' => 3,	
 	);		
 	
@@ -180,7 +207,7 @@ meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 		
 	$form['bedingungen'] = array(
 	  '#type' => 'fieldset',
-	  '#title' => t('Bedingungen'),
+	  '#title' => '<strong>' . t('Bedingungen') . '</strong>',
 	  '#weight' => 5,
 	);
 	
@@ -200,9 +227,12 @@ meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 	  '#weight' => 2,
 	);
 
+  //$form['submit'] = array('#type' => 'submit','#value' => 'Registrierung absenden...', );
 
 	$form['#submit'][] = 'angelio_user_register_form_submit';
-    }
+	//$form['actions']['submit']['#submit'][] = 'angelio_user_register_form_submit';
+	
+    } 
 
 // ******** user_profile_form
 
@@ -365,7 +395,6 @@ meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 	}
 }
 
-
 function angelio_sponsor_validate($element, &$form_state) {
   $sponsor = $element['#value']; 
   if(!angelio_check_sponsor($sponsor)) {
@@ -492,7 +521,7 @@ function angelio_user_register_form_submit($form, &$form_state) {
 		$member = angelio_get_userobject($userinfo['uid']); // jetzt erst ist die Upline gesetzt!
 		
 		// Alles Ok
-		drupal_set_message("Hallo " . $member->firstname . "! Willkommen bei angelio! Sie wurden in der Matrix platziert.");
+		drupal_set_message("Hallo " . $member->first_name . "! Willkommen bei angelio! Sie wurden in der Matrix platziert.");
 		drupal_set_message("Ihr Sponsor: " . $_SESSION['sponsor_name']);
 		drupal_set_message("Ihre Matrix-Upline: " . $member->upline_first_name . " " . $member->upline_last_name . " (" . $member->upline . ")");
 	}

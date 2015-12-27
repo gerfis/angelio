@@ -10,7 +10,7 @@
 <p>Bleibende körperliche Beeinträchtigungen bis zu Euro 300.000,- ab dem 1. Prozent lt. AUVB 2005<br />
 (Grundversicherungssumme: Euro 100.000,- mit 300% Progression)</p>
 <table>
-<tr><td>Unfalltod: </td><td>Euro 5.000,-</td></tr>
+<tr><td>Unfalltod:&nbsp;</td><td>Euro 5.000,-</td></tr>
 </table> 
 <?php if(date_format($date_anlage, 'm') <> '12') { ?>
 <p><b>Versicherungsbeginn:</b> <?php print date("m.d.Y",mktime(0, 0, 0, 1, date_format($date_anlage, 'm')+1, date_format($date_anlage, 'Y'))); ?><br>
@@ -22,7 +22,7 @@
 
 <h3>Vereinsmitglied = versicherte Person</h3>
 <table>
-<tr><td><b>Mitgliedsnummer:</b> </td><td><?php print $userdata['KundenID_online']; ?></td></tr>
+<tr><td><b>Mitgliedsnummer:</b>&nbsp;</td><td><?php print $userdata['KundenID_online']; ?></td></tr>
 <tr><td><b>Name:</b> </td><td><?php print $userdata['strTitel_O'] . " " . $userdata['strVName_O'] . " " . $userdata['strNName_O']; ?></td></tr>
 <tr><td><b>Geburtsdatum:</b> </td><td><?php print date_format(date_create($userdata['datGeburt_O']), 'd.m.Y'); ?></td></tr>
 <tr><td><b>Adresse:</b> </td><td><?php print $userdata['strAnschrift_O'] . ", " . $userdata['strPLZ_O'] . " " . $userdata['strOrt_O'] . ", " . $userdata['strLand_O']; ?></td></tr>

@@ -93,20 +93,6 @@ function angelio_permission() {
   );
 }
 
-function angelio_theme() {
-  $items = array();
-
-  $items['unfall_polizze'] = array(
-    'type' => 'theme',
-    'template' => 'unfall-polizze',
-    'path' => drupal_get_path('module', 'angelio'),    
-    'variables' => array('userdata' => NULL),
-  );
-
-  return $items;
-}
-
-
 function fdate($datetimestring = '1970-01-01 00:00:00', $format = 'U') {
   // Create a datetime object, return it formatted
   // If you want to give credit for this somewhere, thanks.
@@ -122,7 +108,19 @@ function angelio_mail($key, &$message, $params) {
     case 'kuendigen':
       // note: data can be passed to this function in the $params array
       $message['subject'] = 'angelio Kündigung';
-      $message['body'][] = "Hallo " . $params['Vorname'] . "!\n\nDein Vertrag mit der AIG-Nummer " . $params['Polizze'] . " wird gekündigt.\n\nDein angelio Team.";
+	  $body = "Hallo " . $params['Vorname'] . "!\n\nDein Vertrag mit der AIG-Nummer " . $params['Polizze'] . " wird gekündigt.\n\n";
+	  $body .= "Deine Daten:\n\n";
+  	  $body .= 'Username: ' . $params['Username'] . '\n';
+	  $body .= 'Vorname: ' . $params['Vorname'] . '\n';
+	  $body .= 'Nachname: ' . $params['Nachname'] . '\n';	
+	  $body .= 'Strasse: ' . $params['Strasse'] . '\n';
+	  $body .= 'PLZ: ' . $params['PLZ'] . '\n';
+	  $body .= 'Ort: ' . $params['Ort'] . '\n';
+	  $body .= 'Land: ' . $params['Land'] . '\n';
+	  $body .= 'Polizze: ' . $params['Polizze'] . '\n';
+	  $body .= 'Datum: ' . $params['Datum'] . '\n'; 
+	  $body .= "\nDein angelio Team.";
+      $message['body'][] = $body;
       break;    
     case 'erweitern':
       // note: data can be passed to this function in the $params array
@@ -143,6 +141,7 @@ function angelio_mail($key, &$message, $params) {
    case 'neuer':
       $message['subject'] = "Neue Anmeldung bei angelio: " . $params['Neueruser'];
       $body = "Sponsor: " . $params['Sponsorname']. "\n\n";
+      $body = "Upline: " . $params['Uplinename']. "\n\n";	  
 	  $body .= "Neues Mitglied: ". $params['Neuervname']. " " . $params['Neuernname']. "\n";
 	  $body .= "Username: ". $params['Neueruser']. "\n\n";
       $message['body'][] = $body;
@@ -205,8 +204,8 @@ function angelio_menu() {
     );
     
   $items['downline/%'] = array(
-    'title' => 'Meine Genealogie',
-    'description' => 'Meine angelio Genealogie',
+    'title' => 'Meine Frontlines',
+    'description' => 'Meine angelio Frontlines',
     'page callback' => 'angelio_mydownline',
     'page arguments' => array(2),
     'access arguments' => array('access all downlines'),
@@ -235,6 +234,14 @@ function angelio_menu() {
     'page arguments' => array(2),    
     'access arguments' => array('access own downline'),
   );
+  
+  $items['gesamtmatrix'] = array(
+    'title' => 'Gesamte 3x9 Matrix',
+    'description' => 'Die gesamte angelio 3x9 Matrix',
+    'page callback' => 'angelio_gesamtmatrix',
+    'page arguments' => array(2),    
+    'access arguments' => array('access all downline'),
+  );  
   
   $items['angelio/position/%/%'] = array(
     'title' => 'New Position',
@@ -383,6 +390,14 @@ function angelio_menu() {
         'type' => MENU_CALLBACK,
     );
 	
+    $items['visitenkarten.pdf'] = array(
+        'title' => 'Meine angelio Visitenkarten',
+        'page callback' => 'angelio_visitenkarten',
+        'page arguments' => array('0'),                       
+        'access arguments' => array('access own downline'),
+        'type' => MENU_CALLBACK,
+    );
+		
         $items['visitenkarten/%'] = array(
         'title' => 'Meine angelio Visitenkarten',
         'page callback' => 'angelio_visitenkarten',
@@ -487,6 +502,28 @@ function angelio_join() {
 	$_SESSION['sponsor_uid'] = "";
 	$_SESSION['sponsor_name'] = "";
 	drupal_goto('user/register');
+}
+
+function angelio_theme() {
+  $items = array();
+
+  $items['unfall_polizze'] = array(
+    'type' => 'theme',
+    'template' => 'unfall-polizze',
+    'path' => drupal_get_path('module', 'angelio'),    
+    'variables' => array('userdata' => NULL),
+  );
+
+/*
+  $items['user_register_form'] = array (
+     'render element' => 'form',
+     'path' => drupal_get_path('theme','aqua') . '/templates',
+     'template' => 'user-register-form',
+     //'preprocess functions' => array('YOURTHEME_preprocess_user_register_form'),
+  );
+  */
+  
+  return $items;
 }
 
 /*
@@ -606,7 +643,7 @@ function angelio_user_presave(&$edit, $account, $category) {
 				->execute();
 			db_set_active();
 			
-			drupal_set_message("Willkommen bei angelio! Ihnen wurde der Status 'BRONCE' zugeteilt.");
+			drupal_set_message("Willkommen bei angelio!");
 	      }    
 	    
  
@@ -638,7 +675,7 @@ function angelio_user_presave(&$edit, $account, $category) {
 			$level++;
 		}
 			
-		$to = "office@boucado.space;office@angelio.at";
+		$to = "office@angelio.at";
 		$sent = drupal_mail('angelio', 'neuer', $to, language_default(), $params, 'office@angelio.at');
 	  }
   }
@@ -731,7 +768,8 @@ global $user;
 		$thisuser->email=$record->strEmail_O;
 		$thisuser->iban=$record->strIban_O;
 		$thisuser->sponsor_id = $record->ReferrerID_O;
-		$thisuser->upline_id = $record->SponsorID_O;		
+		$thisuser->upline_id = $record->SponsorID_O;	
+		$thisuser->bonuslevel = $record->bonuslevel;
 	}
 
 
@@ -912,7 +950,7 @@ global $user;
 		$userdata = angelio_get_userobject($uid);
 	}	
 	
-	drupal_set_title('Genealogie von ' . $userdata->first_name);
+	drupal_set_title('Frontlines von ' . $userdata->first_name);
 	$output = "<p>Die Genealogie ist die tatsächlich gesponserte, nicht in die 3x9 Matrix gepresste Downline.</p>";
 	
 	db_set_active('angelio_daten');
@@ -954,6 +992,7 @@ global $user;
 	
 	db_set_active();
 
+	/*
 	$output .= "<hr><h3>Struktur</h3>";	
 		
 	$statistik = array();
@@ -975,16 +1014,22 @@ global $user;
 	}
 	$output .= "<p><b>" . t("Total") . ": ". $gesamt . "</b></p>";
 
-	/*
 	$output .= "<h3>Bonuslevels:</h3>";	
 	$output .= "BRONCE: " . $bonuslevels['BRONCE'] . "<br>";
 	$output .= "SILVER: " . $bonuslevels['SILVER'] . "<br>";
 	$output .= "GOLD: " . $bonuslevels['GOLD'] . "<br>";
 	$output .= "<br><hr><br>";
 	*/
-		
+/*		
 	$output .= $tree;
 	
+	$output .= '<hr><h3>Legende:</h3>';
+	$output .= '<span class="status-white">&nbsp;1&nbsp;</span><span class="level1 stufe2 BRONCE" style="padding-left:20px;">User 1 (id: 210) Vorname </span>: gelb: Frontline<br>';
+	$output .= '<span class="status-white">&nbsp;2&nbsp;</span><span class="level2 stufe2 BRONCE" style="padding-left:40px;">User 2 (id: 214) Vorname </span>: hellgrau: 2. Ebene<br>';
+	$output .= '<span class="status-white">&nbsp;3&nbsp;</span><span class="level3 stufe3 BRONCE" style="padding-left:60px;">User 3 (id: 227) Vorname </span>: grauer: 3. Ebene (usw.)<br>';
+	$output .= '<span class="status-white">&nbsp;4&nbsp;</span><span class="level4 stufe4 BRONCE" style="padding-left:80px;">User 4 (id: 227) Vorname </span>: dunkelgrauer: 4. Ebene (usw.)<br>';	
+	$output .= '<span class="status-white">&nbsp;2&nbsp;</span><span class="level2 stufe2 eigen BRONCE" style="padding-left:40px;">User 5 (id: 230) Vorname </span>: eingerahmt: selber gesponsert<br>';
+*/ 
 	return $output;
 }
 
@@ -1099,11 +1144,74 @@ global $user;
 		
 	$output .= $tree;
 	
+	$output .= '<hr><h3>Legende:</h3>';
+	$output .= '<span class="status-white"> 1 </span><span class="level1 stufe2 BRONCE" style="padding-left:20px;">User 1 (id: 210) Vorname </span>: gelb: Frontline<br>';
+	$output .= '<span class="status-white"> 2 </span><span class="level2 stufe2 BRONCE" style="padding-left:40px;">User 2 (id: 214) Vorname </span>: hellgrau: 2. Ebene<br>';
+	$output .= '<span class="status-white"> 2 </span><span class="level3 stufe3 BRONCE" style="padding-left:60px;">User 3 (id: 227) Vorname </span>: grauer: 3. Ebene (usw.)<br>';
+	$output .= '<span class="status-white"> 2 </span><span class="level4 stufe4 BRONCE" style="padding-left:80px;">User 4 (id: 227) Vorname </span>: dunkelgrauer: 4. Ebene (usw.)<br>';	
+	$output .= '<span class="status-white"> 2 </span><span class="level2 stufe2 eigen BRONCE" style="padding-left:40px;">User 5 (id: 230) Vorname </span>: eingerahmt: selber gesponsert<br>';
+	
+	
+	return $output;
+}
+
+function angelio_gesamtmatrix($uid) {
+global $user;
+
+	if($uid!='') {
+		$userdata = angelio_get_userobject($uid);
+	} else {
+		$uid = $user->name;
+		$userdata = angelio_get_userobject($uid);
+	}	
+	
+	drupal_set_title('3x9 Gesamtmatrix');
+	$output ="";
+	
+	$output .= "<hr><h3>Struktur</h3>";	
+	
+		// Bis zu welcher Tiefe bekommt der Empfänger den Bonus?
+	db_set_active('angelio_daten');
+	$sql = "SELECT title, depth FROM tbl_Kunden_Online m, tblBonuslevels b WHERE m.bonuslevel = b.bid AND m.KundenID_online='" . $userdata->member_id . "'";
+	$levels = db_query($sql)->fetchAll();
+	$title = $levels[0]->title;
+	db_set_active();
+	
+	$statistik = array();
+	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILVER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+	
+	$tree = angelio_downline_tree($statistik, $bonuslevels, $userdata->member_id, $userdata->member_id,1,true,1000);
+		
+	//$levels = array('1' => 0, '2' => 0, '3' => 0, '4' => 0, '5' => 0, '6' => 0, '7' => 0, '8' => 0, '9' => 0, '10' => 0, '11'=>0);
+	$levels = array();
+	$gesamt = 0;
+		
+	foreach ($statistik as $level) {
+		if (!isset($levels[$level['level']])) {
+			$levels[$level['level']] = 0;
+		}
+		$levels[$level['level']] = $levels[$level['level']] + $level['count'];  
+		$gesamt += $level['count']; 
+	}
+	
+	$depth = sizeof($levels);
+	
+	for ($i = 1; $i < $depth+1; $i++) {
+		if ($i > $depth) {
+			$output .= "<span style='color:red;'>Level " . $i . ": " . $levels[$i] . "</span><br>";
+		} else {
+			$output .= "<span>Level " . $i . ": " . $levels[$i] . "</span><br>";
+		}
+	}
+	$output .= "<p><b>" . t("Total") . ": ". $gesamt . "</b></p>";
+
+	$output .= $tree;
+	
 	return $output;
 }
 
 function angelio_downline_tree(&$statistik, &$bonuslevels, $uid, $sponsor_id, $level=1, $matrix=true, $depth) {
-	if ($level>9) {return;} // Abbruch nach 9 Leveln
+	if ($level>$depth) {return;} // Abbruch nach 9 Leveln
 	// if ($sponsor_id==0) {return;} // Abbruch bei inaktiven Usern
 	
 	db_set_active('angelio_daten');
@@ -1137,6 +1245,7 @@ function angelio_downline_tree(&$statistik, &$bonuslevels, $uid, $sponsor_id, $l
 			$output .= '<span class="status-' . $member_status . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . ' ' . $bonustitle . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name . '&nbsp;</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
   		}
  		db_set_active();
+		
 		return $output;
 	} else {
 		db_set_active();
@@ -1321,8 +1430,13 @@ function new_TestMember($sponsor_id, $datum) {
 	$username = $sponsor_id . "_" . rand(0,9999);
 	$email = $username . "@angelio.at";
 
-	$result = db_query("SELECT KundenID_online FROM {tbl_Kunden_Online} order by KundenID_online desc limit 1")->fetchCol();
-	$member_id = $result[0] + 1;
+	$result = db_query("SELECT * FROM {tbl_Kunden_Online} order by KundenID_online desc limit 1")->fetchAssoc();
+	
+	if ($result['ysnIsTest'] == 1) {
+		$member_id = $result['KundenID_online'] + 1;
+	} else {
+		$member_id = $result['KundenID_online'] + 90001;
+	}
 	
 	$Polizzennummer_O = date("ym") . sprintf("%07d", $member_id) . "0101";
 	$zahlunsintervall = rand(1,4); 
@@ -1410,8 +1524,11 @@ global $user;
 		}
 		$output .= '</table>';
 	} else {
-		$output .= 'Ihre Verträge werden erst generiert und sollten innerhalb von 48 Stunden sichtbar sein.';
+		// $output .= 'Ihre Verträge werden erst generiert und sollten innerhalb von 48 Stunden sichtbar sein.';
+		$output .= '<br><a href="/polizze/' . $uid . '/' . $userdata['Polizzennummer_O'] . '">SOFORTPOLIZZE HIER DRUCKEN...</a>';
+		$output .= '<br>Die dauerhafte Polizze wird in spätestens 48 Stunden hier in Deinem Account erscheinen.';
 	}
+	
 	db_set_active();
 			
 	$output .= "<hr><br><h3>Meine Dokumente:</h3>";
@@ -1435,6 +1552,13 @@ global $user;
 	db_set_active('angelio_daten');
 	$sql="SELECT * FROM {tbl_Vertraege_online} v LEFT JOIN {tbl_Kunden_Online} k on v.KundenID = k.KundenID_online LEFT JOIN {tbl_Produkte_Online} p on v.ProduktID = p.ProduktID WHERE v.Polizzennummer='" . $pid . "'";
 	$row = db_query($sql)->fetchAssoc();
+	if (!isset($row['KundenID_online'])) {
+		$sql="SELECT * FROM {tbl_Kunden_Online} WHERE Polizzennummer_O='" . $pid . "'";
+		$row = db_query($sql)->fetchAssoc();
+		$row['strProduktbeschreibung'] = 'Unfallversicherung Angelio';
+		$row['datAbschluss'] = $row['datAnlageInternet_O'];
+		$row['Polizzennummer'] = $row['Polizzennummer_O'];
+	} 
 	db_set_active();
 
 	drupal_set_title('angelio Versicherungsbestätigung  '. $pid );
@@ -1478,6 +1602,8 @@ global $user;
 	}
 
 	drupal_set_title('Abrechnung von ' . $userdata->first_name);
+
+	$bonuslevel = $userdata->bonuslevel;
 	
 	db_set_active('angelio_daten');
 
@@ -1499,16 +1625,15 @@ global $user;
 			
 	$output .= '<table id="tblCommissionEbenen"><tr><th class="tblCommissionCol1">Level</th><th class="tblCommissionCol2">Anzahl Mitglieder</th><th class="tblCommissionCol3">Laufende Provision</th><tr>';
 	while ($row = $result->fetchAssoc()) {
-		$output .= '<tr><td class="tblCommissionCol1">' . $row['lngLevel'] . '</td><td class="tblCommissionCol2">' . $row['intAnzahlKunden'] . '</td><td class="tblCommissionCol3">' . $row['dblLaufend'] . '&euro;</td></tr>';
+		$output .= '<tr><td class="tblCommissionCol1">' . $row['lngLevel'] . '</td><td class="tblCommissionCol2">' . $row['intAnzahlKunden'] . '</td><td class="tblCommissionCol3">' . number_format((float)$row['dblLaufend'], 2, ',','.')  . '&euro;</td></tr>';
 	} 
 
 	$sql = "SELECT sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision FROM {tbl_stat_Kunden_Downlines} WHERE lngLevel > 0 AND sponsorID=" . $userdata->member_id;
 	$row = db_query($sql)->fetchAssoc();
 	
-	$output .= '<tr><td class="tblCommissionCol1"><b>Summe:</b></td><td class="tblCommissionCol2"><b>' . $summe_kunden . '</b></td><td class="tblCommissionCol3"><b>' . $summe_provision . '&euro;</b></td></tr>'; 
+	$output .= '<tr><td class="tblCommissionCol1"><b>Summe:</b></td><td class="tblCommissionCol2"><b>' . $summe_kunden . '</b></td><td class="tblCommissionCol3"><b>' . number_format((float)$summe_provision, 2, ',','.')  . '&euro;</b></td></tr>'; 
 	$output .= '</table>'; 
 	
-
 	$output .= "<hr><br><h3>Verdienst der Linien:</h3>";
 
 	$sql = "SELECT * FROM {tbl_Kunden_Online} WHERE SponsorID_O=" . $userdata->member_id;
@@ -1516,15 +1641,26 @@ global $user;
 	
 	$output .= '<table id="tblCommissionEbenen"><tr><th class="tblCommissionCol1">Frontline</th><th class="tblCommissionCol2">Anzahl Mitglieder</th><th class="tblCommissionCol3">Laufende Provision</th><th class="tblCommissionCol3">Aktiv</th><tr>';		
 	while ($row = $result->fetchAssoc()) {
-		$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision, strUsername_O as Kunde, ysnInaktiv as Aktiv FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 9 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
-		$row = db_query($sql)->fetchAssoc();
-		$aktiv = ($row['Aktiv'] == 0) ? 'Ja' : 'Nein';
-		$kunden = ($row['Kunden'] == "") ? '0' : $row['Kunden'];
-		$provision = ($row['Provision'] == "") ? '0' : $row['Provision'];
+		switch ($bonuslevel) {
+			case 2:
+				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision, strUsername_O as Kunde, ysnInaktiv as Aktiv FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 7 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
+				break;
+			case 3:
+				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision, strUsername_O as Kunde, ysnInaktiv as Aktiv FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 8 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
+				break;
+			case 4:
+				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision, strUsername_O as Kunde, ysnInaktiv as Aktiv FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 9 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
+				break;				
+		}
+		
+		$frontline = db_query($sql)->fetchAssoc();
+		$aktiv = ($frontline['Aktiv'] == 0) ? 'Ja' : 'Nein';
+		$kunden = ($frontline['Kunden'] == "") ? '0' : $frontline['Kunden'];
+		$provision = ($frontline['Provision'] == "") ? '0' : $frontline['Provision'];
 		if (user_access('access all provisionen')) {
-			$output .= '<tr><td class="tblCommissionCol1"><a href="/provision/' . $row['sponsorID'] . '">' . $row['Kunde'] . '</a></td><td class="tblCommissionCol2">' . $kunden . '</td><td class="tblCommissionCol3">' . $provision . '&euro;</td><td class="tblCommissionCol2">' . $aktiv . '</td></tr>';
+			$output .= '<tr><td class="tblCommissionCol1"><a href="/provision/' . $frontline['sponsorID'] . '">' . $frontline['Kunde'] . '</a></td><td class="tblCommissionCol2">' . $kunden . '</td><td class="tblCommissionCol3">' . number_format((float)$provision, 2, ',','.') . '&euro;</td><td class="tblCommissionCol2">' . $aktiv . '</td></tr>';
 		} else {
-			$output .= '<tr><td class="tblCommissionCol1">' . $row['Kunde'] . '</td><td class="tblCommissionCol2">' . $kunden . '</td><td class="tblCommissionCol3">' . $provision . '&euro;</td><td class="tblCommissionCol2">' . $aktiv . '</td></tr>';			
+			$output .= '<tr><td class="tblCommissionCol1">' . $frontline['Kunde'] . '</td><td class="tblCommissionCol2">' . $kunden . '</td><td class="tblCommissionCol3">' . number_format((float)$provision, 2, ',','.') . '&euro;</td><td class="tblCommissionCol2">' . $aktiv . '</td></tr>';			
 		}
 	} 
 
@@ -1539,7 +1675,7 @@ global $user;
 		
 	$output .= '<table id="tblCommissionMonate"><tr><th class="tblCommissionCol1">Jahr</th><th class="tblCommissionCol2">Monat</th><th class="tblCommissionCol3">Laufende Provision</th><tr>';
 	while ($row = $result->fetchAssoc()) {
-		$output .= '<tr><td class="tblCommissionCol1">' . $row['Jahr'] . '</td><td class="tblCommissionCol2">' . $row['Monat'] . '</td><td class="tblCommissionCol3">' . $row['Provisionssumme'] . '&euro;</td></tr>';
+		$output .= '<tr><td class="tblCommissionCol1">' . $row['Jahr'] . '</td><td class="tblCommissionCol2">' . $row['Monat'] . '</td><td class="tblCommissionCol3">' . number_format((float)$row['Provisionssumme'], 2, ',','.') . '&euro;</td></tr>';
 	} 
 	$output .= '</table>';
 	
@@ -1548,23 +1684,35 @@ global $user;
 
 	$sql = "SELECT strBonusart, sum(dblBetrag) as Summe FROM {tbl_Konto_online} WHERE datAbrechnungsdatum <= NOW() AND SponsorID=" . $userdata->member_id . " GROUP BY strBonusart ORDER BY strBonusart";
 	$result = db_query($sql);
+	$gesamt = 0.0;
 			
 	$output .= '<table id="tblCommissionMonate"><tr><th class="tblCommissionCol2">Bonusart</th><th class="tblCommissionCol3">Summe Provision</th><tr>';
 	while ($row = $result->fetchAssoc()) {
-		$output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . $row['Summe'] . '&euro;</td></tr>';
+		$output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td></tr>';
+		$gesamt = $gesamt + (float)$row['Summe'];
 	} 
+	$output .= '<tr><td class="tblCommissionCol1"><strong>Gesamtprovisionen</strong></td><td class="tblCommissionCol2"><strong>' . number_format($gesamt, 2, ',','.')  . '&euro;</strong></td></tr>';
 	$output .= '</table>';
 	
-	db_set_active();
+	$output .= '<br><div style="font-size:11px">(<sup>*</sup>)  Startprovision: Sobald Du mindestens 3 Personen innerhalb von 30 Tagen nach Deinem Vereinsbeitritt geworben hast, tritt der Schnellstartbonus in Kraft.
+Technisch ist es uns aber nur möglich, 50 Euro anstatt die höhere Startprovision von 100 Euro anzuzeigen. Die Anhebung passiert erst nach der 30-tägigen Zeitspanne inkl. Kündigungsfrist!</div>';
+
 	
-	/* Schwebend:
-	 SELECT *
-FROM tbl_Konto_online k
-JOIN tbl_Vertraege_online v ON k.VertragsID = v.VertragsID
-JOIN tbl_Produkte_Online p ON k.ProduktID = p.ProduktID
-WHERE k.KundenID =15
-	 */
+	$output .= "<hr><br><h3>Zu erwartende Provisionen im kommenden Jahr<sup>**</sup>:</h3>";	
+	$sql = "SELECT YEAR(datAbrechnungsdatum) as Jahr, MONTH(datAbrechnungsdatum) as Monat, sum(dblBetrag) as Summe, strBonusart FROM `tbl_Konto_online` WHERE datAbrechnungsdatum>NOW() AND SponsorID=" . $userdata->member_id . " GROUP BY YEAR(datAbrechnungsdatum), MONTH(datAbrechnungsdatum) order by YEAR(datAbrechnungsdatum), MONTH(datAbrechnungsdatum), strBonusart";
+	$result = db_query($sql);
+	$gesamt = 0.0;
+			
+	$output .= '<table id="tblCommissionMonate"><tr><th class="tblCommissionCol2">Monat</th><th class="tblCommissionCol3">Provision</th><th class="tblCommissionCol3">Provisionsart</th><tr>';
+	while ($row = $result->fetchAssoc()) {
+		$output .= '<tr><td class="tblCommissionCol2">' . $row['Monat'] . '/' . $row['Jahr'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td></tr>';
+		$gesamt = $gesamt + (float)$row['Summe'];
+	} 
+	$output .= '<tr><td class="tblCommissionCol1"><strong>Gesamt</strong></td><td class="tblCommissionCol2"><strong>' . number_format($gesamt, 2, ',','.')  . '&euro;</strong></td><td>&nbsp;</td></tr>';
+	$output .= '</table>';
+	$output .= '<br><div style="font-size:11px">(<sup>**</sup>) Das sind prognostizierte Werte und gelten nur, wenn niemand in deiner Downline dazukommt und niemand aus deiner Downline kündigt!</div>';
 	
+	db_set_active();	
 	return $output;
 }
 
@@ -1586,7 +1734,7 @@ global $user;
 	$output = "<hr><br><h3>Überweisungen:</h3>";
 	$output .= "<p style='font-size:11px;'>Sobald Dein offener Saldo mehr als 30€ aufweist, wird eine Überweisung auf Dein Bankkonto durchgeführt.<br>Beachte jedoch die 14-tägige Kündigungsfrist, die zusätzlich verstrichen sein muss.</p>";
 
-	$sql = "SELECT sum(dblBetrag) as Betrag FROM `tbl_Konto_online` WHERE DATEDIFF(CURDATE(),datAbrechnungsdatum) > 1 AND SponsorID=" . $userdata->member_id;
+	$sql = "SELECT sum(dblBetrag) as Betrag FROM `tbl_Konto_online` WHERE datAbrechnungsdatum <= NOW() AND SponsorID=" . $userdata->member_id;
 	$result = db_query($sql)->fetchAssoc();	
 	$gesamt = $result['Betrag'];
 	
@@ -1600,18 +1748,18 @@ global $user;
 		<th class="tblCommissionCol1" style="width:400px;">Offene Provisonen</th>
 		<th class="tblCommissionCol1">Betrag</th></tr>';
 		
-	$sql = "SELECT sum(dblBetrag) as Betrag FROM tbl_Konto_online WHERE datAusbezahltAm IS NULL AND DATEDIFF(CURDATE(),datAbrechnungsdatum) > 1  AND SponsorID=" . $userdata->member_id;
+	$sql = "SELECT sum(dblBetrag) as Betrag FROM tbl_Konto_online WHERE datAusbezahltAm IS NULL AND datAbrechnungsdatum <= NOW()  AND SponsorID=" . $userdata->member_id;
 	$result = db_query ($sql)->fetchAssoc();
 	$offen = ($result['Betrag'] == "") ? "0" : $result['Betrag'];
 	
-	$output .= 	'<tr><td class="tblCommissionCol1">Gesamtsumme aller offenen Provisionen</td><td class="tblCommissionCol2">' . $offen . '&euro;</td></tr>';
+	$output .= 	'<tr><td class="tblCommissionCol1">Gesamtsumme aller offenen Provisionen</td><td class="tblCommissionCol2" style="text-align:right;">' . number_format((float)$offen, 2, ',','.') . '&euro;</td></tr>';
 					
-	$sql = "SELECT sum(dblBetrag) as Betrag FROM tbl_Konto_online ko JOIN tbl_Kunden_Online ku on ko.KundenID = ku.KundenID_Online WHERE ko.datAusbezahltAm IS NULL AND DATEDIFF(CURDATE(),ku.datAnlageInternet_O) < 15 AND DATEDIFF(CURDATE(),ko.datAbrechnungsdatum) > 1 AND ko.SponsorID=" . $userdata->member_id;
+	$sql = "SELECT sum(dblBetrag) as Betrag FROM tbl_Konto_online ko JOIN tbl_Kunden_Online ku on ko.KundenID = ku.KundenID_Online WHERE ko.datAusbezahltAm IS NULL AND DATEDIFF(CURDATE(),ku.datAnlageInternet_O) < 15 AND datAbrechnungsdatum <= NOW() AND ko.SponsorID=" . $userdata->member_id;
 	$result = db_query ($sql)->fetchAssoc();
 	$offen_schwebend = ($result['Betrag'] == "") ? "0" : $result['Betrag'];
-	$output .= 	'<tr><td class="tblCommissionCol1">davon noch gesperrt aufgrund Kündigungsfrist</td><td class="tblCommissionCol2">' . $offen_schwebend . '&euro;</td></tr>';	
+	$output .= 	'<tr><td class="tblCommissionCol1">davon noch gesperrt aufgrund Kündigungsfrist</td><td class="tblCommissionCol2" style="text-align:right;">' . number_format((float)$offen_schwebend, 2, ',','.') . '&euro;</td></tr>';	
 	
-	$sql = "SELECT datAusbezahltAm, sum(dblBetrag) as Betrag FROM tbl_Konto_online WHERE NOT (datAusbezahltAm IS NULL) AND DATEDIFF(CURDATE(),datAbrechnungsdatum) > 1 AND SponsorID=" . $userdata->member_id . " group by datAusbezahltAm order by datAusbezahltAm";
+	$sql = "SELECT datAusbezahltAm, sum(dblBetrag) as Betrag FROM tbl_Konto_online WHERE NOT (datAusbezahltAm IS NULL) AND datAbrechnungsdatum <= NOW() AND SponsorID=" . $userdata->member_id . " group by datAusbezahltAm order by datAusbezahltAm";
 	
 	$result = db_query($sql);	
 
@@ -1619,11 +1767,11 @@ global $user;
 		$datum = fdate($row["datAusbezahltAm"],"d") . '.' . fdate($row["datAusbezahltAm"],"m") . '.' . fdate($row["datAusbezahltAm"],"Y");
 
 		$output .= 	'<tr><td class="tblCommissionCol1">' . $datum .
-		 			'</td><td class="tblCommissionCol2">' . $row['Betrag'] . '&euro;' .
+		 			'</td><td class="tblCommissionCol2">' . number_format((float)$row['Betrag'], 2, ',','.') . '&euro;' .
 					'</td></tr>';
 	}
 	$output .= 	'<tr><td class="tblCommissionCol1" style="border-top:1px solid #333;">GESAMTVERDIENST' .
-		 			'</td><td class="tblCommissionCol2" style="border-top:1px solid #333;">' . $gesamt . '&euro;' .
+		 			'</td><td class="tblCommissionCol2" style="border-top:1px solid #333;text-align:right;">' . number_format((float)$gesamt, 2, ',','.') . '&euro;' .
 					'</td></tr>';	
 	$output .= '</table>';  
 		
@@ -1638,7 +1786,7 @@ global $user;
 					array('data'=>'Bonusart','field'=>'strBonusart'),	
 					array('data'=>'Betrag','field'=>'dblBetrag'),
 					array('data'=>'Abrechnung','field'=>'datAbrechnungsdatum','sort'=>'desc'),
-					array('data'=>'Ausbezahlt','field'=>'datAusbezahltAm')
+					array('data'=>'Ausbezahlt<sup>*</sup>','field'=>'datAusbezahltAm')
 				);
 	db_set_active('angelio_daten'); 
 
@@ -1650,7 +1798,7 @@ global $user;
 	$query->fields('ko');
 	$query->fields('pr');
 	$query->fields('ku');
-	$query->where('DATEDIFF(CURDATE(),ko.datAbrechnungsdatum) > 1');
+	$query->where('datAbrechnungsdatum <= NOW()');
 	$query->condition('ko.SponsorID',$userdata->member_id,'=');
 	$query->orderBy('ko.datAbrechnungsdatum', 'DESC')->orderBy('ko.lngLevel', 'ASC');
 
@@ -1670,7 +1818,7 @@ global $user;
 			array('data' => $row->strVName_O),
 			array('data' => $row->strProduktbezeichnung),		
 			array('data' => $row->strBonusart), 
-			array('data' => $row->dblBetrag . '&euro;'),
+			array('data' => number_format((float)$row->dblBetrag, 2, ',','.') . '&euro;&nbsp;&nbsp;', 'align' => 'right'),
 			array('data' => $abrechnung),
 			array('data' => $ausbezahlt)
 		);
@@ -1688,8 +1836,10 @@ global $user;
 						  	
 	$output .= theme('pager', array('tags' => array()));
 	
-	$output .= '<div style="font-size:11px">"noch offen" bedeutet, dass sich das Mitglied noch innerhalb seiner gesetzlichen Kündigungsfrist befindet und somit noch keine Auszahlung möglich ist.</div>';
+	$output .= '<div style="font-size:11px">(<sup>*</sup>) Ausbezahlt werden Beträge erst nach der 14-tägigen Kündigungsfrist von neuen Mitgliedern und frühestens, wenn mindestens 30 Euro in Summe erreicht wurden.</div>';
 			
+	$output .= '<div style="font-size:11px">(<sup>**</sup>)  Startprovision: Sobald Du mindestens 3 Personen innerhalb von 30 Tagen nach Deinem Vereinsbeitritt geworben hast, tritt der Schnellstartbonus in Kraft.
+Technisch ist es uns aber nur möglich, 50 Euro anstatt die höhere Startprovision von 100 Euro anzuzeigen. Die Anhebung passiert erst nach der 30-tägigen Zeitspanne inkl. Kündigungsfrist!</div>';			
 	return $output;		
 }
 
@@ -1712,7 +1862,7 @@ global $user;
 	$output = "<p>Hallo " . $userdata->first_name. "!</p>";
 	
 	if ($interval->days < 15) {
- 		$output .= '<p>Du kannst bei angelio innerhalb von 14 Tagen ohne Angabe von Gründen Deine Verträge bei angelio kündigen. Beachte jedoch, dass bei einer Kündigung alle allfälligen Provisionsansprüche von Deiner Downline verloren gehen. Weitere Verträge, die über angelio abgeschlossen hast, sind von der Kündigung Dieses Vertrages natürlich nicht betroffen (z.B. Bausparer).</p>';
+ 		$output .= '<p>Du kannst bei angelio innerhalb von 14 Tagen ohne Angabe von Gründen Deine Verträge bei angelio kündigen. Beachte jedoch, dass bei einer Kündigung alle allfälligen Provisionsansprüche von Deiner Downline verloren gehen. Weitere Verträge, die Du über angelio abgeschlossen hast, sind von der Kündigung dieses Vertrages natürlich nicht betroffen (z.B. Bausparer).</p>';
 	$output .= "<p>Deine gesetzliche Kündigungsfrist läuft noch bis: " . date("d.m.Y",mktime(0, 0, 1, date_format($date_anlage, 'm'), date_format($date_anlage, 'd')+14, date_format($date_anlage, 'Y')));
 	} else {
  		$output .= '<p>Du kannst jährlich von Deinen Verträgen zurücktreten. Beachte jedoch, dass bei einer Kündigung alle allfälligen Provisionsansprüche von Deiner Downline verloren gehen. Weitere Verträge, die Du über angelio abgeschlossen hast, sind von der Kündigung dieses Vertrages natürlich nicht betroffen (z.B. Bausparer).</p>';
@@ -1786,8 +1936,15 @@ global $user;
 	// E-Mail senden:
 	
 	$params = array(
-  		'Vorname' => $userdata->first_name,
-  		'Polizze' => $polizze
+		'Username' => $userdata->username,
+		'Vorname' => $userdata->first_name,
+		'Nachname' => $userdata->last_name,		
+		'Strasse' => $userdata->street,
+		'PLZ' => $userdata->postal,
+		'Ort' => $userdata->city,
+		'Land' => $userdata->country,
+		'Polizze' => $polizze,
+		'Datum' => date("d.m.Y")
 	);
 	
 	$to = $userdata->email . ',office@angelio.at';
@@ -1937,7 +2094,7 @@ global $user;
 	if ($mobil != "") 
 		{$telefon = $mobil; }
 	 
-	require_once('sites/all/libraries/tcpdf/tcpdf.php');
+	require_once('sites/all/libraries/tcpdf_min/tcpdf.php');
 		
 	$pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
 	
@@ -2026,7 +2183,7 @@ $pdf->writeHTML($tbl . $tbl . $tbl . $tbl . $tbl, true, false, false, false, '')
 	//Close and output PDF document
 	$pdf->Output('angelio-visitenkarten.pdf', 'I');
 
-	return "";
+	//return "";
 }
 function angelio_flyer($uid) {
 global $user;

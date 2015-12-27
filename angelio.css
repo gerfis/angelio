@@ -47,7 +47,7 @@ body {}
 }
 
 .FREE {
-	text-decoration:line-through;
+	-text-decoration:line-through;
 }
 
 .schwebend {
@@ -149,4 +149,13 @@ a.active img {
 	color:white;
 	font-size:16px;
 	cursor:pointer;
+}
+
+.form_collapse {
+	display:none;
+}
+
+.form_hilfe {
+	text-decoration:underline;
+	cursor:help;
 }
