@@ -2,12 +2,90 @@
 
 // watchdog("my_module", '<pre>' . print_r( $my_array_or_object, true) . '</pre>'); 
 
+
+
+/**
+ * Implements hook_boot(). Benutzernamen werden direkt nach dem Slash gelesen und umgeleitet.
+ */
+function angelio_boot() {
+  // if the path has any unallowed characters in it (such as slashes),
+  // it's not a short URL, so we can bail out and save ourselves a database call
+  if (isset($_GET['q']) && angelio_validate_url($_GET['q'])) {
+	$row = db_query('SELECT name FROM users WHERE UPPER(name) = UPPER(:name)', array(':name' => $_GET['q']))->fetchObject();
+    if ($row) {
+      angelio_goto($row);
+    }
+  }
+}
+
+/**
+ * Validate custom short URL string
+ *
+ * @return TRUE if valid, FALSE if invalid
+ */
+function angelio_validate_url($custom) {
+
+  // check the length of the string
+  if (strlen($custom) == 0) {
+    return FALSE;
+  }
+
+  // disallow: #%&@*{}\:;<>?/+.,'"$|`^[] and space character
+  return preg_match('/[ÄÖÜäöüß\/#%&\@\*\{\}\\:\;<>\?\+ \.\,\'\"\$\|`^\[\]]/u', $custom) ? FALSE : TRUE;
+}
+
+/**
+ * A heavily modified version of drupal_goto() (which hasn't been bootstrapped during hook_boot()
+ */
+function angelio_goto($row) {
+  if (!$row || (isset($_GET['redirect']) && $_GET['redirect'] == 'false')) {
+    return;
+  }
+
+  $url = $row->name;
+
+  // Remove newlines from the URL to avoid header injection attacks.
+  $url = str_replace(array("\n", "\r"), '', $url);
+
+  // We do not want this while running update.php.
+  if (!defined('MAINTENANCE_MODE') || MAINTENANCE_MODE != 'update') {
+
+    // Allow modules to react to the end of the page request before redirecting.
+    module_invoke_all('exit', $url);
+  }
+
+  $url = "join/" . $url;
+  
+  // Even though session_write_close() is registered as a shutdown function, we
+  // need all session data written to the database before redirecting.
+  session_write_close();
+
+  header('Location: ' . $url, TRUE, 301);
+
+  // header has been sent... browser has been redirected
+  // now we can do any expensive operations
+
+  // update access information on this row
+  // db_query('UPDATE {shurly} SET count = count + 1, last_used = :time WHERE rid = :rid', array('time' => time(), 'rid' => $row->rid));
+
+  // note: If possible, other modules should probably insert more information
+  // in the database by using hook_db_rewrite_sql() on the above query
+  // rather than creating a new db call
+
+  // The "Location" header sends a redirect status code to the HTTP daemon. In
+  // some cases this can be wrong, so we make sure none of the code below the
+  // drupal_goto() call gets executed upon redirection.
+  exit();
+}
+
+
+
 // $Id$
 global $base_url;
 global $user;
 
 require_once('user-forms.inc');
-if ($user->uid == 1) {
+if (isset($user) && ($user->uid == 1)) {
 	require_once('admin.inc');
 }
 
@@ -19,6 +97,7 @@ if ($user->uid == 1) {
 
 function angelio_init() {
     global $user;
+    drupal_add_css(drupal_get_path('module', 'angelio') . '/angelio.css');
 	// eingeloggten Benutzer umleiten, wenn er versucht sich zu registrieren
 	if (isset($_REQUEST['q'])) { 
 		if ($_REQUEST['q'] == 'user/register' && $user->uid > 0)
@@ -26,7 +105,7 @@ function angelio_init() {
 	        drupal_goto('user');
 	    }
 	}
-    drupal_add_css(drupal_get_path('module', 'angelio') . '/angelio.css');
+
 /*
     global $base_path;
     drupal_add_js("
@@ -570,7 +649,7 @@ function angelio_check_sponsor($uid) {
 		//print_r($_COOKIE['sponsor']);		
 		return true;
 	} else {
-		$userinfo = db_query("SELECT uid, name FROM {users} WHERE name='" . $uid . "'")->fetchAssoc();
+		$userinfo = db_query("SELECT uid, name FROM {users} WHERE UPPER(name)=UPPER('" . $uid . "')")->fetchAssoc();
 		if ($userinfo['name']) {
 			$_SESSION['sponsor_uid'] = $userinfo['uid'];
 			$_SESSION['sponsor_name'] = $userinfo['name'];
@@ -645,12 +724,16 @@ function angelio_user_presave(&$edit, $account, $category) {
 			
 			drupal_set_message("Willkommen bei angelio!");
 	      }    
-	    
- 
+	  }
+  }
+}
+
+
+function angelio_mail2upline($uid) {
 		// E-Mail an Upline senden
 		
 		$level = 1;
-		$member = angelio_get_userobject($account->uid);
+		$member = angelio_get_userobject($uid);
 		$sponsor = angelio_get_userdata($member->upline_id);	
 		$UplineID_O = $member->upline_id;
 		$params = array();
@@ -677,8 +760,6 @@ function angelio_user_presave(&$edit, $account, $category) {
 			
 		$to = "office@angelio.at";
 		$sent = drupal_mail('angelio', 'neuer', $to, language_default(), $params, 'office@angelio.at');
-	  }
-  }
 }
 
 function angelio_get_userdata($uid) {
@@ -1697,7 +1778,7 @@ global $user;
 	$output .= '<br><div style="font-size:11px">(<sup>*</sup>)  Startprovision: Sobald Du mindestens 3 Personen innerhalb von 30 Tagen nach Deinem Vereinsbeitritt geworben hast, tritt der Schnellstartbonus in Kraft.
 Technisch ist es uns aber nur möglich, 50 Euro anstatt die höhere Startprovision von 100 Euro anzuzeigen. Die Anhebung passiert erst nach der 30-tägigen Zeitspanne inkl. Kündigungsfrist!</div>';
 
-	
+/*	
 	$output .= "<hr><br><h3>Zu erwartende Provisionen im kommenden Jahr<sup>**</sup>:</h3>";	
 	$sql = "SELECT YEAR(datAbrechnungsdatum) as Jahr, MONTH(datAbrechnungsdatum) as Monat, sum(dblBetrag) as Summe, strBonusart FROM `tbl_Konto_online` WHERE datAbrechnungsdatum>NOW() AND SponsorID=" . $userdata->member_id . " GROUP BY YEAR(datAbrechnungsdatum), MONTH(datAbrechnungsdatum) order by YEAR(datAbrechnungsdatum), MONTH(datAbrechnungsdatum), strBonusart";
 	$result = db_query($sql);
@@ -1711,6 +1792,7 @@ Technisch ist es uns aber nur möglich, 50 Euro anstatt die höhere Startprovisi
 	$output .= '<tr><td class="tblCommissionCol1"><strong>Gesamt</strong></td><td class="tblCommissionCol2"><strong>' . number_format($gesamt, 2, ',','.')  . '&euro;</strong></td><td>&nbsp;</td></tr>';
 	$output .= '</table>';
 	$output .= '<br><div style="font-size:11px">(<sup>**</sup>) Das sind prognostizierte Werte und gelten nur, wenn niemand in deiner Downline dazukommt und niemand aus deiner Downline kündigt!</div>';
+	*/
 	
 	db_set_active();	
 	return $output;
@@ -2147,10 +2229,10 @@ $tbl = <<<EOT
 	    </tr>
 	    <tr>
 	    	<td width="230"><span style="font-size:18px; margin-top:10px;">$vorname<br>$nachname</span><br /><br /><span style="font-size:11px;">$telefon<br>$email<br /></span></td>
-	    	<td width="90" valign="top" ><img align="right" src="http://www.angelio.at/qr/?data=www.angelio.at%2Fjoin%2F$username" alt="QR Code" width="80" height="80" /></td>
+	    	<td width="90" valign="top" ><img align="right" src="http://www.angelio.at/qr/?data=www.angelio.at%2F$username" alt="QR Code" width="80" height="80" /></td>
 	    </tr>
 	    <tr>
-	    	<td colspan="2"><span style="font-size:14px; color:#0060B1;">www.angelio.at/join/$username</span><br /><br />&nbsp;<br />&nbsp;</td>
+	    	<td colspan="2"><span style="font-size:14px; color:#0060B1;">www.angelio.at/$username</span><br /><br />&nbsp;<br />&nbsp;</td>
 	    </tr>
 	    </table>
 	</td>
@@ -2164,10 +2246,10 @@ $tbl = <<<EOT
 	    </tr>
 	    <tr>
 	    	<td width="230"><span style="font-size:18px; margin-top:10px;">$vorname<br>$nachname</span><br /><br /><span style="font-size:11px;">$telefon<br>$email<br /></span></td>
-	    	<td width="90" valign="top" ><img align="right" src="http://www.angelio.at/qr/?data=www.angelio.at%2Fjoin%2F$username&size=150x150" alt="QR Code" width="80" height="80" /></td>
+	    	<td width="90" valign="top" ><img align="right" src="http://www.angelio.at/qr/?data=www.angelio.at%2F$username&size=150x150" alt="QR Code" width="80" height="80" /></td>
 	    </tr>
 	    <tr>
-	    	<td colspan="2"><span style="font-size:14px; color:#0060B1;">www.angelio.at/join/$username</span><br /><br />&nbsp;<br />&nbsp;</td>
+	    	<td colspan="2"><span style="font-size:14px; color:#0060B1;">www.angelio.at/$username</span><br /><br />&nbsp;<br />&nbsp;</td>
 	    </tr>
 	    </table>
 	</td>
@@ -2250,11 +2332,12 @@ global $user;
 	
 	// Image example with resizing
 	$pdf->Image('http://www.angelio.at/downloads/angelio_flyer_A4_leer.jpg', 5, 5, 200 , 282, 'JPG', '', '', true, 300, '', false, false, 0, false, false, false);
-	$pdf->Image('http://www.angelio.at/qr/?data=www.angelio.at%2Fjoin%2F' . $username, 177, 139, 14 , 14, 'PNG', '', '', true, 300, '', false, false, 0, false, false, false);
+	$pdf->Image('http://www.angelio.at/qr/?data=www.angelio.at%2F' . $username, 177, 139, 14 , 14, 'PNG', '', '', true, 300, '', false, false, 0, false, false, false);
 	$pdf->SetXY(90,275);
-	$pdf->Write(0, 'Mehr auf: www.angelio.at/join/' . $username, '', 0, 'L', true, 0, false, false, 0);
+	$pdf->Write(0, 'Mehr auf: www.angelio.at/' . $username, '', 0, 'L', true, 0, false, false, 0);
 	// -------------------------------------------------------------------
 	
 	//Close and output PDF document
 	$pdf->Output('angelio_flyer_A4.pdf', 'I');
 }
+

@@ -44,10 +44,11 @@ global $user;
 	$form['account']['name'] = array(
 	    '#title' => 'Benutzername aussuchen',
 	    '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">Wählen Sie hier einen Benutzernamen nach Ihren Wünschen, aber beachten Sie unten angeführte Regeln. Der Benutzername ist sehr wichtig für Sie und kann nicht mehr geändert werden! Einerseits benötigen Sie ihn, um sich bei angelio einzuloggen. 
-Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitglieder anwerben, damit das System weiß, wer wen geworben hat und wir dadurch die Werbeprämie an Sie ausbezahlen können. <br><b>Regeln:</b> Der Benutzername muss zwischen 3 und 15 Zeichen lang sein und darf keine Leerzeichen, Satzzeichen und Sonderzeichen enthalten. Beispiele: RUDI1963, RudiPur, Winner1.<br>Sollte ein Benutzername bereits im System vorhanden sein, dann müssen Sie einen anderen wählen.<br>WÄHLEN SIE DEN BENUTZERNAMEN MIT BEDACHT! ER KANN SPÄTER NICHT MEHR GEÄNDERT WERDEN!</div>',
+Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitglieder anwerben, damit das System weiß, wer wen geworben hat und wir dadurch die Werbeprämie an Sie ausbezahlen können. <br><b>Regeln:</b> Der Benutzername muss zwischen 3 und 15 Zeichen lang sein und darf keine Umlaute, Leerzeichen, Satzzeichen und Sonderzeichen enthalten. Beispiele: RUDI1963, RudiPur, Winner1.<br>Sollte ein Benutzername bereits im System vorhanden sein, dann müssen Sie einen anderen wählen.<br>WÄHLEN SIE DEN BENUTZERNAMEN MIT BEDACHT! ER KANN SPÄTER NICHT MEHR GEÄNDERT WERDEN!</div>',
 	    '#type' => 'textfield',
 	    '#required' => TRUE,
-	    '#weight' => -1,
+	    '#element_validate' => array('angelio_username_validate'),
+	    '#weight' => 2,
 	);
 	
 	$form['account']['mail']['#description'] = '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">Eine gültige E-Mail-Adresse. Alle E-Mails der Website werden an diese Adresse geschickt. Die Adresse wird nicht veröffentlicht und wird nur verwendet, wenn Sie ein neues Passwort anfordern oder wenn Sie einstellen, bestimmte Informationen oder Benachrichtigungen per E-Mail zu erhalten.</div>';
@@ -67,7 +68,16 @@ Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitgliede
 	  '#weight' => 1,
 	);
 
-
+	if (isset($_GET['wunsch'])) {
+		$form['benutzer']['upline'] = array(
+		  '#title' => 'Wunschlinie in der Matrix',
+		  '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">In welcher Linie der 3x9 Matrix soll der Benutzer platziert werden?</div>',
+		  '#type' => 'textfield',
+		  '#element_validate' => array('angelio_upline_validate'),
+		  '#weight' => 2,
+		);
+	}
+	 
 	$form['personal'] = array(
 	  '#type' => 'fieldset',
 	  '#title' => '<strong>' . t('Kontakt Informationen') . '</strong>',
@@ -186,10 +196,10 @@ Gläubiger-Identifikationsnummer: AT76ZZZ00000016804<br>
 	  '#type' => 'select',
 	  '#title' => t('Zahlungsweise'),
 	  '#required' => TRUE,
-	  '#options' => array('1'=>'jährlich 240€',
-	  					  '2'=>'halbjährlich 130€',
-	  					  '4'=>'quartalsweise 70€',
-	  					  '12'=>'monatlich 25€'), 
+	  '#options' => array('1'=>'jährlich 264€ (22€/Mon.)',
+	  					  '2'=>'halbjährlich 144€ (24€/Mon.)',
+	  					  '4'=>'quartalsweise 78€ (26€/Mon.)',
+	  					  '12'=>'monatlich 30€'), 
 	  '#weight' => 4,	
 	);
 
@@ -395,12 +405,29 @@ meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 	}
 }
 
+function angelio_username_validate($element, &$form_state) {
+  $username = $element['#value']; 
+  if(!angelio_validate_url($username)) {
+    form_error($element, t('Der Benutzername "%s" ist ung&uuml;ltig. Bitte keine Umlaute, Leerzeichen, Satzzeichen und Sonderzeichen verwenden.', array('%s'=>$username)));
+  }
+}
+
 function angelio_sponsor_validate($element, &$form_state) {
   $sponsor = $element['#value']; 
   if(!angelio_check_sponsor($sponsor)) {
     form_error($element, t('Sponsor "%s" ist unbekannt.', array('%s'=>$sponsor)));
   }
 }
+
+function angelio_upline_validate($element, &$form_state) {
+  $upline = $element['#value']; 
+  if ($upline<>"") {
+	  if(!user_load_by_name($upline)) {
+	    form_error($element, t('Upline "%s" ist unbekannt.', array('%s'=>$upline)));
+	  }
+  }
+}
+
 
 function angelio_password_validate($element, &$form_state) {
   $password = $element['#value'];
@@ -455,6 +482,12 @@ function angelio_user_register_form_submit($form, &$form_state) {
 	$strUsername_O = $username;
 	$strEmail_O = $form_state['values']['mail'];
 	$SponsorID_O = $_SESSION['sponsor_uid'];
+	if (isset($form_state['values']['upline'])) {
+		$upline = $form_state['values']['upline'];
+	} else {
+		$upline = "";
+	}
+	
 	$KundenID_offline = '';
 	$strNName_O = $form_state['values']['strNName_O'];
 	$strVName_O = $form_state['values']['strVName_O'];
@@ -517,14 +550,36 @@ function angelio_user_register_form_submit($form, &$form_state) {
 		
 	 	// Member in Matrix platzieren:
 	    $member = angelio_get_userobject($userinfo['uid']);
-		angelio_inMatrix($member->member_id, $member->sponsor_id);
+		if ($upline<>"") {
+			// Wunschlinie gesetzt
+			$upline_user = user_load_by_name($upline);
+			$upline_id = $upline_user->uid;
+			angelio_inMatrix($member->member_id, $upline_id);
+		} else {
+			angelio_inMatrix($member->member_id, $member->sponsor_id);
+		}
+		
+	    // Benutzer Rolle setzen
+		if ($role = user_role_load_by_name('BRONCE')) {
+			db_set_active('angelio_daten');
+			db_update('tbl_Kunden_Online')
+				->fields(array('bonuslevel' => 2))
+				->condition('KundenID_online', $member->member_id, '=')
+				->execute();
+			db_set_active();
+	      }  
+		
+		 
 		$member = angelio_get_userobject($userinfo['uid']); // jetzt erst ist die Upline gesetzt!
+		angelio_mail2upline($userinfo['uid']);
 		
 		// Alles Ok
 		drupal_set_message("Hallo " . $member->first_name . "! Willkommen bei angelio! Sie wurden in der Matrix platziert.");
 		drupal_set_message("Ihr Sponsor: " . $_SESSION['sponsor_name']);
 		drupal_set_message("Ihre Matrix-Upline: " . $member->upline_first_name . " " . $member->upline_last_name . " (" . $member->upline . ")");
 	}
+	
+	drupal_goto("user");
 }
 
 function angelio_user_edit_form_submit($form, &$form_state) {
