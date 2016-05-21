@@ -64,6 +64,7 @@ Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitgliede
 	  '#type' => 'textfield',
 	  '#element_validate' => array('angelio_sponsor_validate'),
 	  '#required' => TRUE,
+	  '#autocomplete_path' => 'user/autocomplete',
 	  '#default_value' => $sponsor_name,
 	  '#weight' => 1,
 	);
@@ -73,6 +74,7 @@ Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitgliede
 		  '#title' => 'Wunschlinie in der Matrix',
 		  '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">In welcher Linie der 3x9 Matrix soll der Benutzer platziert werden?</div>',
 		  '#type' => 'textfield',
+          '#autocomplete_path' => 'user/autocomplete',		  
 		  '#element_validate' => array('angelio_upline_validate'),
 		  '#weight' => 2,
 		);
@@ -197,9 +199,9 @@ Gläubiger-Identifikationsnummer: AT76ZZZ00000016804<br>
 	  '#title' => t('Zahlungsweise'),
 	  '#required' => TRUE,
 	  '#options' => array('1'=>'jährlich 264€ (22€/Mon.)',
-	  					  '2'=>'halbjährlich 144€ (24€/Mon.)',
-	  					  '4'=>'quartalsweise 78€ (26€/Mon.)',
-	  					  '12'=>'monatlich 30€'), 
+	  					  '2'=>'halbjährlich 138€ (23€/Mon.)',
+	  					  '4'=>'quartalsweise 72€ (24€/Mon.)',
+	  					  '12'=>'monatlich 25€'), 
 	  '#weight' => 4,	
 	);
 
@@ -372,6 +374,7 @@ meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 	  '#default_value' => $userdata['strIban_O'],	  
 	  '#weight' => 2,		
 	);
+    
 	$form['bank']['strBic_O'] = array(
 	  '#type' => 'textfield',
 	  '#title' => t('BIC'),
@@ -561,15 +564,28 @@ function angelio_user_register_form_submit($form, &$form_state) {
 		
 	    // Benutzer Rolle setzen
 		if ($role = user_role_load_by_name('BRONCE')) {
+			// Funktioniert einfach nicht...
+			  
+	        user_multiple_role_edit(array($member->member_id), 'add_role', $role->rid);
+
+	        /* auch nicht
+	        $user = user_load($member->member_id);
+			$user->roles = $user->roles + array($role->rid => $role->name);
+			user_save($user);
+			*/
+			
 			db_set_active('angelio_daten');
+			// Dem Member die host_id eintragen
 			db_update('tbl_Kunden_Online')
 				->fields(array('bonuslevel' => 2))
 				->condition('KundenID_online', $member->member_id, '=')
 				->execute();
 			db_set_active();
+			
+			drupal_set_message("Willkommen bei angelio!");
 	      }  
 		
-		 
+		
 		$member = angelio_get_userobject($userinfo['uid']); // jetzt erst ist die Upline gesetzt!
 		angelio_mail2upline($userinfo['uid']);
 		

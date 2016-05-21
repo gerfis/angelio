@@ -8,13 +8,29 @@
  * Implements hook_boot(). Benutzernamen werden direkt nach dem Slash gelesen und umgeleitet.
  */
 function angelio_boot() {
-  // if the path has any unallowed characters in it (such as slashes),
-  // it's not a short URL, so we can bail out and save ourselves a database call
+  // Format www.angelio.at/username
   if (isset($_GET['q']) && angelio_validate_url($_GET['q'])) {
 	$row = db_query('SELECT name FROM users WHERE UPPER(name) = UPPER(:name)', array(':name' => $_GET['q']))->fetchObject();
     if ($row) {
-      angelio_goto($row);
+      angelio_goto($row,'');
     }
+  }
+  
+  // Format username.angelio.at/irgendwas
+  $subdomain = explode(".",$_SERVER['HTTP_HOST']);
+  if ($subdomain[0] == "www" && $subdomain[1] != "angelio") {
+      array_shift($subdomain);
+  }
+  
+  if ($subdomain[0] != "www" && $subdomain[0] != "angelio") {
+    $row = db_query('SELECT name FROM users WHERE UPPER(name) = UPPER(:name)', array(':name' => $subdomain[0]))->fetchObject();
+    if ($row) {
+      if (isset($_GET['q']) && angelio_validate_url($_GET['q'])) {
+        angelio_goto($row,$_GET['q']);
+      } else {
+          angelio_goto($row,'');
+      }
+    }      
   }
 }
 
@@ -37,12 +53,12 @@ function angelio_validate_url($custom) {
 /**
  * A heavily modified version of drupal_goto() (which hasn't been bootstrapped during hook_boot()
  */
-function angelio_goto($row) {
+function angelio_goto($row,$q='') {
   if (!$row || (isset($_GET['redirect']) && $_GET['redirect'] == 'false')) {
     return;
   }
 
-  $url = $row->name;
+  $url = "join/" . $row->name;
 
   // Remove newlines from the URL to avoid header injection attacks.
   $url = str_replace(array("\n", "\r"), '', $url);
@@ -53,9 +69,8 @@ function angelio_goto($row) {
     // Allow modules to react to the end of the page request before redirecting.
     module_invoke_all('exit', $url);
   }
-
-  $url = "join/" . $url;
-  
+ 
+  $url = "http://www.angelio.at/" . $url . "/" . $q;
   // Even though session_write_close() is registered as a shutdown function, we
   // need all session data written to the database before redirecting.
   session_write_close();
@@ -219,10 +234,28 @@ function angelio_mail($key, &$message, $params) {
       break;	  
    case 'neuer':
       $message['subject'] = "Neue Anmeldung bei angelio: " . $params['Neueruser'];
-      $body = "Sponsor: " . $params['Sponsorname']. "\n\n";
-      $body = "Upline: " . $params['Uplinename']. "\n\n";	  
-	  $body .= "Neues Mitglied: ". $params['Neuervname']. " " . $params['Neuernname']. "\n";
-	  $body .= "Username: ". $params['Neueruser']. "\n\n";
+       $body = "Neues angelio Mitglied: \n\n";
+      $body .= "Sponsor: " . $params['Sponsorname']. "\n";
+      $body .= "Upline: " . $params['Uplinename']. "\n\n";	  
+      
+	  $body .= "Username: ". $params['Neueruser']. "\n";
+      $body .= "Vorname: ". $params['Neuervname']. "\n";
+      $body .= "Nachname: ". $params['Neuernname']. "\n\n";
+      
+      $body .= "Strasse: ". $params['Strasse']. "\n";
+      $body .= "PLZ: ". $params['PLZ']. "\n";
+      $body .= "Ort: ". $params['Ort']. "\n";
+      $body .= "Tel: ". $params['Tel']. "\n";
+      $body .= "E-Mail: ". $params['Mail']. "\n";
+      $body .= "Geburtsdatum: ". $params['Geburtstag']. "\n";
+      $body .= "Beruf: ". $params['Beruf']. "\n\n";
+      
+      $body .= "IBAN: ". $params['IBAN']. "\n";
+      $body .= "BIC: ". $params['BIC']. "\n";
+      $body .= "Zahlungsintervall: ". $params['Zahlung']. " (1=Jahr, 2=Halbjahr, 3=Quartal, 12=Monat)\n\n";
+      
+      $body .= "Polizze: ". $params['Polizze']. "\n";
+      
       $message['body'][] = $body;
       break;	    
     case 'testen':
@@ -230,6 +263,16 @@ function angelio_mail($key, &$message, $params) {
       $message['subject'] = "angelio Testmail";
       $message['body'][] = "Hallo " . $params['Vorname'] . "!\n\nDas ist ein angelio Testmail.\n\nDein angelio Team.";
       break;
+    case 'backup':
+      // note: data can be passed to this function in the $params array
+      $message['subject'] = "angelio Backup Manager Aktivierung";
+      $body = "User: " . $params['user'] . "\n";
+      $body .= "UId: " . $params['uid'] . "\n";
+      $body .= "User E-Mail: " . $params['usermail'] . "\n\n";
+      $body .= "Subdomain: " . $params['Subdomain'] . "\n";
+      $body .= "Backup E-Mail: " . $params['Email'] . "\n";
+      $message['body'][] = $body;
+      break;      
       
   }
 }
@@ -286,7 +329,7 @@ function angelio_menu() {
     'title' => 'Meine Frontlines',
     'description' => 'Meine angelio Frontlines',
     'page callback' => 'angelio_mydownline',
-    'page arguments' => array(2),
+    'page arguments' => array(1),
     'access arguments' => array('access all downlines'),
   );
   
@@ -302,7 +345,7 @@ function angelio_menu() {
     'title' => 'Meine 3x9 Matris',
     'description' => 'Meine angelio 3x9 Matrix',
     'page callback' => 'angelio_mymatrix',
-    'page arguments' => array(2),
+    'page arguments' => array(1),
     'access arguments' => array('access all downlines'),
   );
   
@@ -361,15 +404,14 @@ function angelio_menu() {
         'type' => MENU_CALLBACK,
     );	
 		
-        $items['polizze/%'] = array(
+        $items['polizze/%/%'] = array(
         'title' => 'Meine angelio Polizze',
         'page callback' => 'angelio_unfall_polizze',
-        'page arguments' => array(2),               
+        'page arguments' => array(1,2),               
         'access arguments' => array('access own polizzen'),
         'type' => MENU_CALLBACK,
     );
 	
-  
 
     $items['provision'] = array(
         'title' => 'Meine angelio Abrechnung',
@@ -461,6 +503,22 @@ function angelio_menu() {
     );		
 
 
+    $items['backup'] = array(
+        'title' => 'Mein angelio Backup',
+        'page callback' => 'angelio_backup',
+        'page arguments' => array('0'),                       
+        'access arguments' => array('access own downline'),
+        'type' => MENU_CALLBACK,
+    );
+	
+        $items['backup/%'] = array(
+        'title' => 'Mein angelio Backup',
+        'page callback' => 'angelio_backup',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own downline'),
+        'type' => MENU_CALLBACK,
+    );
+	
     $items['visitenkarten'] = array(
         'title' => 'Meine angelio Visitenkarten',
         'page callback' => 'angelio_visitenkarten',
@@ -734,7 +792,7 @@ function angelio_mail2upline($uid) {
 		
 		$level = 1;
 		$member = angelio_get_userobject($uid);
-		$sponsor = angelio_get_userdata($member->upline_id);	
+		$sponsor = angelio_get_userdata($member->sponsor_id);	
 		$UplineID_O = $member->upline_id;
 		$params = array();
 
@@ -749,9 +807,22 @@ function angelio_mail2upline($uid) {
 		  		'Sponsorname' => $sponsor['strUsername_O'],
 		  		'Neuervname' => $member->first_name,
 		  		'Neuernname' => $member->last_name,
-		  		'Neueruser' => $member->username
+		  		'Neueruser' => $member->username,
+		  		'Strasse' => $member->street,
+		  		'PLZ' => $member->postal,
+		  		'Ort' => $member->city,
+		  		'Land' => $member->country,
+		  		'Tel' => $member->phone,
+		  		'Mail' => $member->email,
+		  		'IBAN' => $member->iban,
+		  		'BIC' => $member->bic,
+		  		'Zahlung' => $member->payment,
+		  		'Geburtstag' => $member->birthday,
+		  		'Beruf' => $member->job,
+		  		'Polizze' => $member->polizze,
 			);
-			
+            
+                    
 			$to = $upline['strEmail_O'];
 			$sent = drupal_mail('angelio', 'upline', $to, language_default(), $params, 'office@angelio.at');
 			
@@ -809,6 +880,12 @@ global $user;
 		$thisuser->country="Democountry";
 		$thisuser->phone="123456";
 		$thisuser->email="demo@demo.com";
+        $thisuser->iban="AT111111111111111111";
+        $thisuser->bic="BICBICBIC";      
+        $thisuser->payment="1";
+        $thisuser->birthday="2000-01-01";
+        $thisuser->job="Marketing";
+        $thisuser->polizze="TEST00001";          
 		$thisuser->sponsor = 'angelio';
 		$thisuser->sponsor_id = '1';
 		$thisuser->sponsor_first_name = 'ANGELIO';
@@ -848,6 +925,11 @@ global $user;
 		$thisuser->phone=$record->strTelefon_O;
 		$thisuser->email=$record->strEmail_O;
 		$thisuser->iban=$record->strIban_O;
+        $thisuser->bic=$record->strBic_O;
+        $thisuser->payment=$record->Zahlungsintervall_O;
+        $thisuser->birthday=$record->datGeburt_O;
+        $thisuser->job=$record->strBeruf_O;
+        $thisuser->polizze=$record->Polizzennummer_O;
 		$thisuser->sponsor_id = $record->ReferrerID_O;
 		$thisuser->upline_id = $record->SponsorID_O;	
 		$thisuser->bonuslevel = $record->bonuslevel;
@@ -927,8 +1009,8 @@ global $user;
 	} else { // der Admin
 		$thisuser->upline = 'angelio';
 		$thisuser->upline_id = '1';
-		$thisuser->upline_first_name = 'BOUCADO';
-		$thisuser->upline_last_name = 'Admin';
+		$thisuser->upline_first_name = 'angelio';
+		$thisuser->upline_last_name = 'Verein';
 		$thisuser->upline_bonuslevel = 5;
 	}
 
@@ -1627,7 +1709,7 @@ global $user;
 	return $output; 
 }
  
-function angelio_unfall_polizze($pid) {
+function angelio_unfall_polizze($uid,$pid) {
 global $user;
 	
 	db_set_active('angelio_daten');
@@ -1776,7 +1858,7 @@ global $user;
 	$output .= '</table>';
 	
 	$output .= '<br><div style="font-size:11px">(<sup>*</sup>)  Startprovision: Sobald Du mindestens 3 Personen innerhalb von 30 Tagen nach Deinem Vereinsbeitritt geworben hast, tritt der Schnellstartbonus in Kraft.
-Technisch ist es uns aber nur möglich, 50 Euro anstatt die höhere Startprovision von 100 Euro anzuzeigen. Die Anhebung passiert erst nach der 30-tägigen Zeitspanne inkl. Kündigungsfrist!</div>';
+Technisch ist es uns aber nur möglich, 44 Euro anstatt die höhere Startprovision von 88 Euro anzuzeigen. Die Anhebung passiert erst nach der 30-tägigen Zeitspanne inkl. Kündigungsfrist!</div>';
 
 /*	
 	$output .= "<hr><br><h3>Zu erwartende Provisionen im kommenden Jahr<sup>**</sup>:</h3>";	
@@ -1848,7 +1930,7 @@ global $user;
 	while ($row = $result->fetchAssoc()) {
 		$datum = fdate($row["datAusbezahltAm"],"d") . '.' . fdate($row["datAusbezahltAm"],"m") . '.' . fdate($row["datAusbezahltAm"],"Y");
 
-		$output .= 	'<tr><td class="tblCommissionCol1">' . $datum .
+		$output .= 	'<tr><td class="tblCommissionCol1">Auszahlung am ' . $datum .
 		 			'</td><td class="tblCommissionCol2">' . number_format((float)$row['Betrag'], 2, ',','.') . '&euro;' .
 					'</td></tr>';
 	}
@@ -2195,7 +2277,7 @@ global $user;
 	$pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
 	
 	// set margins
-	$pdf->SetMargins(10, 10, 5);
+	$pdf->SetMargins(10, 17, 5);
 	$pdf->SetFooterMargin(0);
 	// set auto page breaks
 	$pdf->SetAutoPageBreak(FALSE, 5);
@@ -2227,12 +2309,12 @@ $tbl = <<<EOT
 	    <tr>
 	    	<td colspan="2"><img alt="" src="/sites/default/files/images/yellow-line.png" style="width: 310px; height: 2px; "></td>
 	    </tr>
-	    <tr>
-	    	<td width="230"><span style="font-size:18px; margin-top:10px;">$vorname<br>$nachname</span><br /><br /><span style="font-size:11px;">$telefon<br>$email<br /></span></td>
-	    	<td width="90" valign="top" ><img align="right" src="http://www.angelio.at/qr/?data=www.angelio.at%2F$username" alt="QR Code" width="80" height="80" /></td>
+	    <tr><td width="20px"></td>
+	    	<td width="210" style="padding-left:20px;"><span style="font-size:18px; margin-top:10px;">$vorname<br>$nachname</span><br /><br /><span style="font-size:11px;">$telefon<br>$email<br /></span></td>
+	    	<td width="90" valign="top" ><img align="right" src="http://www.angelio.at/qr/index_qr.php?data=www.angelio.at%2F$username" alt="QR Code" width="80" height="80" /></td>
 	    </tr>
-	    <tr>
-	    	<td colspan="2"><span style="font-size:14px; color:#0060B1;">www.angelio.at/$username</span><br /><br />&nbsp;<br />&nbsp;</td>
+	    <tr><td width="20px"></td>
+	    	<td colspan="2" height="20px"><span style="font-size:14px; line-height:23px; color:#0060B1;">www.angelio.at/$username<br />&nbsp;</span></td>
 	    </tr>
 	    </table>
 	</td>
@@ -2244,12 +2326,12 @@ $tbl = <<<EOT
 	    <tr>
 	    	<td colspan="2"><img alt="" src="/sites/default/files/images/yellow-line.png" style="width: 310px; height: 2px; "></td>
 	    </tr>
-	    <tr>
-	    	<td width="230"><span style="font-size:18px; margin-top:10px;">$vorname<br>$nachname</span><br /><br /><span style="font-size:11px;">$telefon<br>$email<br /></span></td>
-	    	<td width="90" valign="top" ><img align="right" src="http://www.angelio.at/qr/?data=www.angelio.at%2F$username&size=150x150" alt="QR Code" width="80" height="80" /></td>
+	    <tr><td width="20px"></td>
+	    	<td width="210"><span style="font-size:18px; margin-top:10px;">$vorname<br>$nachname</span><br /><br /><span style="font-size:11px;">$telefon<br>$email<br /></span></td>
+	    	<td width="90" valign="top" ><img align="right" src="http://www.angelio.at/qr/index_qr.php?data=www.angelio.at%2F$username&size=150x150" alt="QR Code" width="80" height="80" /></td>
 	    </tr>
-	    <tr>
-	    	<td colspan="2"><span style="font-size:14px; color:#0060B1;">www.angelio.at/$username</span><br /><br />&nbsp;<br />&nbsp;</td>
+	    <tr><td width="20px"></td>
+	    	<td colspan="2" ><span style="font-size:14px; line-height:23px; color:#0060B1;">www.angelio.at/$username<br />&nbsp;</span></td>
 	    </tr>
 	    </table>
 	</td>
@@ -2332,8 +2414,8 @@ global $user;
 	
 	// Image example with resizing
 	$pdf->Image('http://www.angelio.at/downloads/angelio_flyer_A4_leer.jpg', 5, 5, 200 , 282, 'JPG', '', '', true, 300, '', false, false, 0, false, false, false);
-	$pdf->Image('http://www.angelio.at/qr/?data=www.angelio.at%2F' . $username, 177, 139, 14 , 14, 'PNG', '', '', true, 300, '', false, false, 0, false, false, false);
-	$pdf->SetXY(90,275);
+	$pdf->Image('http://www.angelio.at/qr/index_qr.php?data=www.angelio.at%2F' . $username, 177, 139, 14 , 14, 'PNG', '', '', true, 300, '', false, false, 0, false, false, false);
+	$pdf->SetXY(98,275);
 	$pdf->Write(0, 'Mehr auf: www.angelio.at/' . $username, '', 0, 'L', true, 0, false, false, 0);
 	// -------------------------------------------------------------------
 	
@@ -2341,3 +2423,120 @@ global $user;
 	$pdf->Output('angelio_flyer_A4.pdf', 'I');
 }
 
+
+function angelio_backup($uid) {
+global $user;
+	
+	if($uid!='0') {
+		$userdata = angelio_get_userobject($uid);
+	} else {
+		$uid = $user->uid;
+		$userdata = angelio_get_userobject($uid);
+	}
+	
+	db_set_active('angelio_daten');
+	$sql = "SELECT * FROM {tbl_Backup} WHERE KundenID_online=" . $uid;
+	$result = db_query($sql)->fetchAssoc();
+	db_set_active();	
+	if ($result) {
+		$output = "<p>Dein Backup Manger Zugang ist: <b><a href='https://" . $result['Subdomain'] . ".konsole.backup-manager.eu' target='_blank'>https://" . $result['Subdomain'] . ".konsole.backup-manager.eu</a></b></p>";
+		$output .= "<p>Dein Backup Manager Benutzername ist: " . $result['Email'] ."</p>";
+        $output .= "<p>Das Passwort f&uuml;r den Backup Manager haben wir dir per E-Mail zugesandt.<br>Wenn du es vergessen hast, wende dich bitte an unseren <a href='/support'>Support</a>.</p>";
+        
+		if ($result['aktiv']) {
+			$output .= "<p>Dein Zugang ist aktiv.</p>";
+		} else {
+			$output .= "Dein Zugang ist noch nicht aktiviert. Bitte habe noch etwas Geduld, du wirst per E-Mail informiert, sobald dein Backup-Manager eingerichtet ist.<p>&nbsp;</p>";
+		} 
+	} else {
+		$output = "Bitte w&auml;hle hier deinen gew&uuml;nschten Zugangsnamen und eine E-Mail Adresse f&uuml;r den Backup Manager.<br><br>";
+		$output .= "Dein Zugang wird dann so aussehen: <u>https://<b>" . $userdata->username . "</b>.konsole.backup-manager.eu</u><br><br>"; 
+		$output .= "Der Einfachheit halber, haben wir die Felder schon mit deinem angelio Benutzernamen und deiner E-Mail Adresse ausgef&uuml;llt,<br>du kannst aber ganz andere Eintr&auml;ge w&auml;hlen!<br><br>";
+		$output .= "Bitte beachte, dass der Name schon vergeben sein kann. Wir h&auml;ngen dann ein paar Zahlen daran.<br>";
+		$output .= "Sobald du deinen Namen aktiviert hast, legen wir deinen Backup Manager an. Das kann 2-3 Werktage dauern.<br>";
+		$output .= "Wir informieren dich per E-Mail, wenn der Zugang eingerichtet ist!";
+		$form = drupal_get_form('angelio_backup_form',$uid);
+		//$form['userid']['value'] = $uid;
+		$output .= drupal_render($form);
+        $output .= "<p>&nbsp;</p>";
+	}	
+	
+	return $output;
+}
+
+function angelio_backup_form($form, &$form_state, $uid) {
+  $userdata = angelio_get_userobject($uid);
+
+  $form['subdomain'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Gew&uuml;nschter Zugangsname zum Backup Manager:',
+    '#default_value' => $userdata->username,
+    '#required' => TRUE,
+    '#element_validate' => array('angelio_subdomain_validate'),
+  );
+  
+ 
+  $form['email'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Gew&uuml;nschte E-Mail Adresse als Benutzername:',
+    '#default_value' => $userdata->email,
+    '#required' => TRUE,
+    '#element_validate' => array('angelio_email_validate'),
+  ); 
+  
+  $form['userid'] = array(
+  	'#type' => 'hidden', 
+  	'#value' => $uid,
+	);
+  
+  $form['submit_button'] = array(
+    '#type' => 'submit',
+    '#value' => 'Jetzt aktivieren',
+  );
+  return $form;
+}
+
+function angelio_subdomain_validate($element, &$form_state) {
+  $username = $element['#value']; 
+  if(!angelio_validate_url($username)) {
+    form_error($element, t('Der Zugangsname "%s" ist ung&uuml;ltig. Bitte keine Umlaute, Leerzeichen, Satzzeichen und Sonderzeichen verwenden.', array('%s'=>$username)));
+  }
+}
+
+function angelio_email_validate($element, &$form_state, $form) {
+  $value = $element['#value'];
+  if (!valid_email_address($value)) {
+    form_error($element, t('Bitte eine g&uuml;ltige E-Mail Adresse eingeben.'));
+  }
+}
+
+function angelio_backup_form_submit($form, &$form_state) {
+	$subdomain = $form_state['values']['subdomain'];
+    $email = $form_state['values']['email'];
+	$uid = $form_state['values']['userid'];
+    $userdata = angelio_get_userobject($uid);
+	
+	db_set_active("angelio_daten");
+	$sql = "INSERT INTO {tbl_Backup} (KundenID_online, Subdomain, Email,aktiv) VALUES ('" . $uid . "', '" . $subdomain . "','" . $email . "',0)";	
+	db_query($sql);
+	db_set_active();
+    
+    $params = array(
+    'user' => $userdata->username,
+    'uid' => $uid,
+    'usermail' => $userdata->email,
+    'Subdomain' => $subdomain,
+    'Email' => $email,
+    );
+
+    $to = 'support@angelio.at';
+    
+    $sent = drupal_mail('angelio', 'backup', $to , language_default(), $params, 'support@angelio.at');
+    
+    if($sent){
+        drupal_set_message('Ein E-Mail wurde an den Support gesendet. Wir werden deinen Backup Manager jetzt einrichten und geben dir Bescheid, wenn alles fertig ist. Das kann 2-3 Werktage dauern.', 'status');    
+    } else {
+        drupal_set_message('Es ist ein Fehler aufgetreten. Bitte wende dich an den Support.', 'error');
+    }
+      
+}
