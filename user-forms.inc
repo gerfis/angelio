@@ -588,7 +588,79 @@ function angelio_user_register_form_submit($form, &$form_state) {
 		
 		$member = angelio_get_userobject($userinfo['uid']); // jetzt erst ist die Upline gesetzt!
 		angelio_mail2upline($userinfo['uid']);
-		
+        
+        
+        /*
+        // Benutzeradresse im Shop anlegen:
+        
+        db_set_active('angelio_shop');
+    
+        
+        $sql = "INSERT INTO {users} (uid, name, pass, mail, mode, sort, threshold, theme, signature, signature_format, created, access, login, status, timezone, language, picture, init, data, timezone_name) 
+        VALUES (
+        " . $user['uid'] . ", 
+        '" . $user['name'] . "', 
+        '" . $user['pass'] . "', 
+        '" . $user['mail'] . "', 
+        " . $user['mode'] . ", 
+        " . $user['sort'] . ", 
+        " . $user['threshold'] . ", 
+        '" . $user['theme'] . "', 
+        '" . $user['signature'] . "', 
+        " . $user['signature_format'] . ", 
+        " . $user['created'] . ", 
+        " . $user['access'] . ", 
+        " . $user['login'] . ", 
+        " . $user['status'] . ", 
+        '" . $user['timezone'] . "', 
+        '" . $user['language'] . "', 
+        '" . $user['picture'] . "', 
+        '" . $user['init'] . "', 
+        '" . $user['data'] . "', 
+        '" . $user['timezone_name'] . "'
+        )";
+    
+        $success = db_query($sql);
+        if (!$success) {
+            drupal_set_message("Fehler beim Export von " . $uid, 'error');
+        } else {
+            drupal_set_message("Der Benutzer wurde im angelio Shop angelegt");
+        }
+            
+        $uid = $KundenID_online;
+        $first_name = $strVName_O;
+        $last_name = $strNName_O;
+        $phone = $strTelefon_O;
+        $company = '';
+        $street1 = $strAnschrift_O;
+        $street2 = '';
+        $city = $strOrt_O;
+        $zone = '0';
+        $postal_code = $strPLZ_O;
+        if ($strLand_O == 'AT') {$country = '40';}
+        if ($strLand_O == 'DE') {$country = '276';} 
+        $address_name = 'angelio';
+        $default_shipping = '1';
+        $default_billing= '1';
+        $created = 'NOW()';
+        $modified  = 'NOW()';
+        $title = '';
+        $surname_prefix = '';
+        $house_number = '';
+        $sql = "INSERT INTO {uc_addresses} (uid,first_name,last_name,phone,company,street1,street2,city,zone,postal_code,country,address_name,default_shipping,default_billing,created,modified,title,surname_prefix,house_number)";
+        $sql .= " VALUES ('$uid','$first_name','$last_name','$phone','$company','$street1','$street2','$city',$zone,'$postal_code',$country,'$address_name',$default_shipping,$default_billing,$created,$modified,'$title','$surname_prefix','$house_number')";
+    
+        $success = db_query($sql);
+        if (!$success) {
+            drupal_set_message("Fehler beim Import von " . $uid, 'error');
+        } else {
+            drupal_set_message("Die Benutzeradresse wurde im angelio Shop hinterlegt");
+        }
+    
+        db_set_active('');          
+         * 
+         */
+         
 		// Alles Ok
 		drupal_set_message("Hallo " . $member->first_name . "! Willkommen bei angelio! Sie wurden in der Matrix platziert.");
 		drupal_set_message("Ihr Sponsor: " . $_SESSION['sponsor_name']);
