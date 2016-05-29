@@ -74,7 +74,7 @@ Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitgliede
 //	if (isset($_GET['wunsch'])) {
 		$form['benutzer']['upline'] = array(
 		  '#title' => 'Wunschlinie in der Matrix',
-		  '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">In welcher Linie der 3x9 Matrix soll der Benutzer platziert werden?</div>',
+		  '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">In welcher Linie der 3x9 Matrix soll der Benutzer platziert werden? Bitte nur ausf&uuml;llen, wenn Du schon eine Downline hast.</div>',
 		  '#type' => 'textfield',
           '#autocomplete_path' => 'user/autocomplete',		  
 		  '#element_validate' => array('angelio_upline_validate'),
