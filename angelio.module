@@ -2427,7 +2427,7 @@ global $user;
 	$result = db_query($sql)->fetchAssoc();
 	db_set_active();	
 	if ($result) {
-		$output = "<p>Dein Backup Manger Zugang ist: <b><a href='https://" . $result['Subdomain'] . ".konsole.backup-manager.eu' target='_blank'>https://" . $result['Subdomain'] . ".konsole.backup-manager.eu</a></b></p>";
+		$output = "<p>Dein Backup Manger Zugang ist: <b><a href='http://" . $result['Subdomain'] . ".konsole.backup-manager.eu' target='_blank'>https://" . $result['Subdomain'] . ".konsole.backup-manager.eu</a></b></p>";
 		$output .= "<p>Dein Backup Manager Benutzername ist: " . $result['Email'] ."</p>";
         $output .= "<p>Das Passwort f&uuml;r den Backup Manager haben wir dir per E-Mail zugesandt.<br>Wenn du es vergessen hast, wende dich bitte an unseren <a href='/support'>Support</a>.</p>";
         
@@ -2438,7 +2438,7 @@ global $user;
 		} 
 	} else {
 		$output = "Bitte w&auml;hle hier deinen gew&uuml;nschten Zugangsnamen und eine E-Mail Adresse f&uuml;r den Backup Manager.<br><br>";
-		$output .= "Dein Zugang wird dann so aussehen: <u>https://<b>" . $userdata->username . "</b>.konsole.backup-manager.eu</u><br><br>"; 
+		$output .= "Dein Zugang wird dann so aussehen: <u>http://<b>" . $userdata->username . "</b>.konsole.backup-manager.eu</u><br><br>"; 
 		$output .= "Der Einfachheit halber, haben wir die Felder schon mit deinem angelio Benutzernamen und deiner E-Mail Adresse ausgef&uuml;llt,<br>du kannst aber ganz andere Eintr&auml;ge w&auml;hlen!<br><br>";
 		$output .= "Bitte beachte, dass der Name schon vergeben sein kann. Wir h&auml;ngen dann ein paar Zahlen daran.<br>";
 		$output .= "Sobald du deinen Namen aktiviert hast, legen wir deinen Backup Manager an. Das kann 2-3 Werktage dauern.<br>";

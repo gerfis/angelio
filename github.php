@@ -1,3 +1,4 @@
-<?php `git pull`;
-// auto git pull
+<?php 
+$output = `git pull`;
+echo "<pre>$output</pre>";
 ?>
