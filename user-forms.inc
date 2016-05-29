@@ -14,6 +14,8 @@ global $user;
 		$sponsor_name = $_SESSION['sponsor_name'];
 	} 
 
+
+
 	// hilfe öffnen link:
 	$form['account']['script'] = array(
 		'#markup' => '<script>
@@ -69,7 +71,7 @@ Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitgliede
 	  '#weight' => 1,
 	);
 
-	if (isset($_GET['wunsch'])) {
+//	if (isset($_GET['wunsch'])) {
 		$form['benutzer']['upline'] = array(
 		  '#title' => 'Wunschlinie in der Matrix',
 		  '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">In welcher Linie der 3x9 Matrix soll der Benutzer platziert werden?</div>',
@@ -78,7 +80,7 @@ Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitgliede
 		  '#element_validate' => array('angelio_upline_validate'),
 		  '#weight' => 2,
 		);
-	}
+//	}
 	 
 	$form['personal'] = array(
 	  '#type' => 'fieldset',
