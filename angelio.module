@@ -100,6 +100,8 @@ global $base_url;
 global $user;
 
 require_once('user-forms.inc');
+require_once('num2text.inc');
+
 if (isset($user) && ($user->uid == 1)) {
 	require_once('admin.inc');
 }
@@ -253,7 +255,7 @@ function angelio_mail($key, &$message, $params) {
       
       $body .= "IBAN: ". $params['IBAN']. "\n";
       $body .= "BIC: ". $params['BIC']. "\n";
-      $body .= "Zahlungsintervall: ". $params['Zahlung']. " (1=Jahr, 2=Halbjahr, 3=Quartal, 12=Monat)\n\n";
+      $body .= "Zahlungsintervall: ". $params['Zahlung']. " (1=Jahr, 2=Halbjahr, 4=Quartal, 12=Monat)\n\n";
       
       $body .= "Polizze: ". $params['Polizze']. "\n";
       
@@ -869,7 +871,6 @@ global $user;
 	}
 
 	if ($username=="Demo" || $username=="Helpdesk") {
-
 		$thisuser = new stdClass();
 		$thisuser->member_id=0;
 		$thisuser->username="demo";
@@ -895,7 +896,8 @@ global $user;
 		$thisuser->upline_id = '1';
 		$thisuser->upline_first_name = 'ANGELIO';
 		$thisuser->upline_last_name = 'Admin';	
-		$thisuser->bonuslevel = 1;	
+		$thisuser->bonuslevel = 1;
+        $thisuser->created = '2016-01-01 12:00:00';
 		// Ablaufdaten holen
 		$thisuser->status = angelio_is_user_active($thisuser);
 		
@@ -912,7 +914,7 @@ global $user;
 	$result = $query->execute();
 	db_set_active();
 	
-	foreach ($result as $record) {
+	foreach ($result as $record) {    
 		$thisuser = new stdClass();
 		$thisuser->member_id=$record->KundenID_online;
 		$thisuser->username=$record->strUsername_O;
@@ -934,6 +936,7 @@ global $user;
 		$thisuser->sponsor_id = $record->ReferrerID_O;
 		$thisuser->upline_id = $record->SponsorID_O;	
 		$thisuser->bonuslevel = $record->bonuslevel;
+        $thisuser->created = $record->datAnlageInternet_O;
 	}
 
 
@@ -2427,7 +2430,7 @@ global $user;
 	$result = db_query($sql)->fetchAssoc();
 	db_set_active();	
 	if ($result) {
-		$output = "<p>Dein Backup Manger Zugang ist: <b><a href='http://" . $result['Subdomain'] . ".konsole.backup-manager.eu' target='_blank'>https://" . $result['Subdomain'] . ".konsole.backup-manager.eu</a></b></p>";
+		$output = "<p>Dein Backup Manger Zugang ist: <b><a href='http://" . $result['Subdomain'] . ".konsole.backup-manager.eu' target='_blank'>http://" . $result['Subdomain'] . ".konsole.backup-manager.eu</a></b></p>";
 		$output .= "<p>Dein Backup Manager Benutzername ist: " . $result['Email'] ."</p>";
         $output .= "<p>Das Passwort f&uuml;r den Backup Manager haben wir dir per E-Mail zugesandt.<br>Wenn du es vergessen hast, wende dich bitte an unseren <a href='/support'>Support</a>.</p>";
         
