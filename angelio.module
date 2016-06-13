@@ -285,7 +285,7 @@ function angelio_menu() {
     $items = array();
 	
 	
-
+/*
 	$items['admin/angelio'] = array(
 		'title' => 'ANGELIO',
 		'description' => 'This is the parent item',
@@ -312,6 +312,7 @@ function angelio_menu() {
 		'page arguments' => array('angelio_testmail_form'), 
 		'access arguments' => array('administer site configuration'),
 	);
+*/
 
     $items['join/%'] = array(
         'title' => 'Register',
@@ -600,6 +601,40 @@ function angelio_menu() {
 	return $items;
 }
 
+
+/**
+ * Implements hook_block_info().
+ */
+function angelio_block_info() {
+  $blocks = array();
+  $blocks['angelio_footer_block'] = array(
+    'info' => t('Angelio Footer'),
+  );
+  
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function angelio_block_view($delta='') {
+  $block = array();
+  
+  switch($delta) {
+    case 'angelio_footer_block' :
+      $block['content'] = angelio_footer_block_view();
+      break;
+  }
+  
+  return $block;
+}
+
+function angelio_footer_block_view() {
+    
+    $result = db_query("Select count(uid) from {users}")->fetchCol();
+    $output = "Aktive Mitglieder: " . $result[0];
+    return $output;
+}
 
 function angelio_testmail_form($form,&$form_state) {
 	$form['vorname'] = array(
