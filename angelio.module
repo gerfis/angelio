@@ -260,7 +260,29 @@ function angelio_mail($key, &$message, $params) {
       $body .= "Polizze: ". $params['Polizze']. "\n";
       
       $message['body'][] = $body;
-      break;	    
+      break;	   
+   case 'edit':
+      $message['subject'] = "Datenänderung bei angelio: " . $params['Neueruser'];
+       $body = "Ein Mitglied hat seine Daten geändert: \n\n";
+
+      $body .= "Username: ". $params['Neueruser']. "\n";
+      $body .= "Vorname: ". $params['Neuervname']. "\n";
+      $body .= "Nachname: ". $params['Neuernname']. "\n\n";
+      
+      $body .= "Strasse: ". $params['Strasse']. "\n";
+      $body .= "PLZ: ". $params['PLZ']. "\n";
+      $body .= "Ort: ". $params['Ort']. "\n";
+      $body .= "Tel: ". $params['Tel']. "\n";
+      $body .= "E-Mail: ". $params['Mail']. "\n";
+      $body .= "Geburtsdatum: ". $params['Geburtstag']. "\n";
+      $body .= "Beruf: ". $params['Beruf']. "\n\n";
+      
+      $body .= "IBAN: ". $params['IBAN']. "\n";
+      $body .= "BIC: ". $params['BIC']. "\n";
+      $body .= "Zahlungsintervall: ". $params['Zahlung']. " (1=Jahr, 2=Halbjahr, 4=Quartal, 12=Monat)\n\n";
+      
+      $message['body'][] = $body;
+      break; 
     case 'testen':
       // note: data can be passed to this function in the $params array
       $message['subject'] = "angelio Testmail";
@@ -870,6 +892,37 @@ function angelio_mail2upline($uid) {
 		$to = "office@angelio.at";
 		$sent = drupal_mail('angelio', 'neuer', $to, language_default(), $params, 'office@angelio.at');
 }
+
+function angelio_mail2office($uid) {
+        // E-Mail an Office senden
+        
+        $member = angelio_get_userobject($uid);
+
+        $params = array(
+            'Receivername' => '',
+            'Uplinename' => $member->upline,
+            'Sponsorname' => $member->sponsor,
+            'Neuervname' => $member->first_name,
+            'Neuernname' => $member->last_name,
+            'Neueruser' => $member->username,
+            'Strasse' => $member->street,
+            'PLZ' => $member->postal,
+            'Ort' => $member->city,
+            'Land' => $member->country,
+            'Tel' => $member->phone,
+            'Mail' => $member->email,
+            'IBAN' => $member->iban,
+            'BIC' => $member->bic,
+            'Zahlung' => $member->payment,
+            'Geburtstag' => $member->birthday,
+            'Beruf' => $member->job,
+            'Polizze' => $member->polizze,
+        );
+            
+        $to = "office@angelio.at";
+        $sent = drupal_mail('angelio', 'edit', $to, language_default(), $params, 'office@angelio.at');
+}
+
 
 function angelio_get_userdata($uid) {
 	db_set_active('angelio_daten');

@@ -727,6 +727,6 @@ function angelio_user_edit_form_submit($form, &$form_state) {
 	else {
 		drupal_set_message("Der Benutzer wurde gespeichert.");
 	}
-
+    angelio_mail2office($KundenID_online);
 }
 ?>
