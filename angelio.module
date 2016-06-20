@@ -2635,15 +2635,12 @@ function angelio_backup_form_submit($form, &$form_state) {
       
 }
 
-
-function angelio_gutschein_make($gid) {
-    $output = "Make: " . $gid;
-    return $output;
-}
-
 function angelio_gutschein_check($uid,$gid) {
-    $output = "Check: " . $uid . " / " . $gid;
+
+    $user = user_load($uid);
+    $gutschein = node_load($gid);
     
+    $output = 'Gutschein "' . $gutschein->title . '"<br>f&uuml;r ' . $user->name . ' einlösen?';    
     return $output;
 }
 
@@ -2666,7 +2663,9 @@ global $user;
 
 
     $gutschein = node_load($gid);
-    
+    $partner = node_load($gutschein->field_partnerfirma['und'][0]['nid']);
+    $partnername = $partner->title;
+        
 
     if ($mobil != "") 
         {$telefon = $mobil; }
@@ -2679,8 +2678,8 @@ global $user;
     // set document information
     $pdf->SetCreator(PDF_CREATOR);
     $pdf->SetAuthor('angelio');
-    $pdf->SetTitle('angelio Flyer A4');
-    $pdf->SetSubject('angelio Flyer A4');
+    $pdf->SetTitle('angelio Gutschein A4');
+    $pdf->SetSubject('angelio Gutschein A4');
     $pdf->SetKeywords('angelio');
     
     // remove default header/footer
@@ -2689,6 +2688,9 @@ global $user;
     
     // set default monospaced font
     $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
+    
+    // set font
+    $pdf->SetFont('helvetica', '', '24');
     
     // set margins
     $pdf->SetMargins(0, 0, 0);
@@ -2716,13 +2718,14 @@ global $user;
     
     // Image example with resizing
     $pdf->Image('http://www.angelio.at/downloads/angelio_gutschein_A4_leer.jpg', 5, 5, 200 , 282, 'JPG', '', '', true, 300, '', false, false, 0, false, false, false);
-    $pdf->Image('http://www.angelio.at/qr/index_qr.php?data=www.angelio.at%2Fgs%2Fcheck%2F' . $uid . '%2F' . $gid, 150, 200, 34 , 34, 'PNG', '', '', true, 300, '', false, false, 0, false, false, false);
-    $pdf->SetXY(98,150);
-    $pdf->Write(0, $gutschein->title, '', 0, 'L', true, 0, false, false, 0);
-        $pdf->SetXY(98,200);
-    $pdf->Write(0, $gutschein->field_partnerfirma['und'][0]['value'], '', 0, 'L', true, 0, false, false, 0);
-    $pdf->SetXY(98,275);
-    $pdf->Write(0, 'Mehr auf: www.angelio.at/' . $username, '', 0, 'L', true, 0, false, false, 0);
+    $pdf->Image('http://www.angelio.at/qr/index_qr.php?data=www.angelio.at%2Fgs%2Fcheck%2F' . $uid . '%2F' . $gid, 85, 170, 54 , 54, 'PNG', '', '', true, 300, '', false, false, 0, false, false, false);
+    $pdf->SetXY(15,120);
+    $pdf->Write(0, $gutschein->title, '', 0, 'C', true, 0, false, false, 0);
+    $pdf->SetXY(15,140);
+    $pdf->Write(0, $partnername, '', 0, 'C', true, 0, false, false, 0);
+    $pdf->SetFontSize('12');
+    $pdf->SetXY(15,270);
+    $pdf->Write(0, 'Mehr auf: www.angelio.at/' . $username, '', 0, 'C', true, 0, false, false, 0);
     // -------------------------------------------------------------------
     
     //Close and output PDF document
