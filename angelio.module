@@ -587,14 +587,14 @@ function angelio_menu() {
     );
 	
     $items['gs/check/%/%'] = array(
-        'title' => 'angelio Gutschein einlösen',
+        'title' => 'Gutschein einlösen',
         'page callback' => 'angelio_gutschein_check',
         'page arguments' => array(2,3), 
         'access arguments' => array('access content'),
     );
     
     $items['gutschein/%/%'] = array(
-        'title' => 'angelio Gutschein einlösen',
+        'title' => 'Gutschein ausdrucken',
         'page callback' => 'angelio_gutschein_drucken',
         'page arguments' => array(1,2), 
         'access arguments' => array('access content'),
