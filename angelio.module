@@ -2640,7 +2640,7 @@ function angelio_gutschein_check($uid,$gid) {
     $user = user_load($uid);
     $gutschein = node_load($gid);
     
-    $output = 'Gutschein "' . $gutschein->title . '"<br>f&uuml;r ' . $user->name . ' einlösen?';    
+    $output = 'Gutschein<br><br><b>"' . $gutschein->title . '"</b><br><br>f&uuml;r ' . $user->name . ' einlösen?';    
     return $output;
 }
 
