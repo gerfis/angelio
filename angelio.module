@@ -586,7 +586,21 @@ function angelio_menu() {
         'type' => MENU_CALLBACK,
     );
 	
-		
+    $items['gs/check/%/%'] = array(
+        'title' => 'angelio Gutschein einlösen',
+        'page callback' => 'angelio_gutschein_check',
+        'page arguments' => array(2,3), 
+        'access arguments' => array('access content'),
+    );
+    
+    $items['gutschein/%/%'] = array(
+        'title' => 'angelio Gutschein einlösen',
+        'page callback' => 'angelio_gutschein_drucken',
+        'page arguments' => array(1,2), 
+        'access arguments' => array('access content'),
+    );
+    
+    
  /*  
         $items['mein-angelio'] = array(
         'title' => 'Mein angelio',
@@ -2428,6 +2442,7 @@ $pdf->writeHTML($tbl . $tbl . $tbl . $tbl . $tbl, true, false, false, false, '')
 
 	//return "";
 }
+
 function angelio_flyer($uid) {
 global $user;
 
@@ -2618,4 +2633,98 @@ function angelio_backup_form_submit($form, &$form_state) {
         drupal_set_message('Es ist ein Fehler aufgetreten. Bitte wende dich an den Support.', 'error');
     }
       
+}
+
+
+function angelio_gutschein_make($gid) {
+    $output = "Make: " . $gid;
+    return $output;
+}
+
+function angelio_gutschein_check($uid,$gid) {
+    $output = "Check: " . $uid . " / " . $gid;
+    
+    return $output;
+}
+
+function angelio_gutschein_drucken($uid,$gid) {
+global $user;
+
+    if($uid!='0') {
+        $userdata = angelio_get_userdata($uid);
+    } else {
+        $uid = $user->uid;
+        $userdata = angelio_get_userdata($uid);
+    }
+    
+    $username = $userdata['strUsername_O']; 
+    $vorname = $userdata['strVName_O'];
+    $nachname = $userdata['strNName_O'];
+    $telefon = $userdata['strTelefon_O'];
+    $mobil = $userdata['strMobil_O'];
+    $email = $userdata['strEmail_O'];
+
+
+    $gutschein = node_load($gid);
+    
+
+    if ($mobil != "") 
+        {$telefon = $mobil; }
+     
+    require_once('sites/all/libraries/tcpdf/tcpdf.php');
+
+    // create new PDF document
+    $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+    
+    // set document information
+    $pdf->SetCreator(PDF_CREATOR);
+    $pdf->SetAuthor('angelio');
+    $pdf->SetTitle('angelio Flyer A4');
+    $pdf->SetSubject('angelio Flyer A4');
+    $pdf->SetKeywords('angelio');
+    
+    // remove default header/footer
+    $pdf->setPrintHeader(false);
+    $pdf->setPrintFooter(false);
+    
+    // set default monospaced font
+    $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
+    
+    // set margins
+    $pdf->SetMargins(0, 0, 0);
+    $pdf->SetHeaderMargin(0);
+    $pdf->SetFooterMargin(0);
+    
+    // set auto page breaks
+    $pdf->SetAutoPageBreak(FALSE);
+    
+    // set image scale factor
+    $pdf->setImageScale(1);
+    
+    // -------------------------------------------------------------------
+    
+    // add a page
+    $pdf->AddPage();
+    
+    // set JPEG quality
+    $pdf->setJPEGQuality(90);
+    
+    // Image method signature:
+    // Image($file, $x='', $y='', $w=0, $h=0, $type='', $link='', $align='', $resize=false, $dpi=300, $palign='', $ismask=false, $imgmask=false, $border=0, $fitbox=false, $hidden=false, $fitonpage=false)
+    
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    
+    // Image example with resizing
+    $pdf->Image('http://www.angelio.at/downloads/angelio_gutschein_A4_leer.jpg', 5, 5, 200 , 282, 'JPG', '', '', true, 300, '', false, false, 0, false, false, false);
+    $pdf->Image('http://www.angelio.at/qr/index_qr.php?data=www.angelio.at%2Fgs%2Fcheck%2F' . $uid . '%2F' . $gid, 150, 200, 34 , 34, 'PNG', '', '', true, 300, '', false, false, 0, false, false, false);
+    $pdf->SetXY(98,150);
+    $pdf->Write(0, $gutschein->title, '', 0, 'L', true, 0, false, false, 0);
+        $pdf->SetXY(98,200);
+    $pdf->Write(0, $gutschein->field_partnerfirma['und'][0]['value'], '', 0, 'L', true, 0, false, false, 0);
+    $pdf->SetXY(98,275);
+    $pdf->Write(0, 'Mehr auf: www.angelio.at/' . $username, '', 0, 'L', true, 0, false, false, 0);
+    // -------------------------------------------------------------------
+    
+    //Close and output PDF document
+    $pdf->Output('angelio_flyer_A4.pdf', 'I');
 }
