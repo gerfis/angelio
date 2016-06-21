@@ -593,12 +593,21 @@ function angelio_menu() {
         'access arguments' => array('access content'),
     );
     
+    $items['gs/clear/%/%'] = array(
+        'title' => 'Gutschein freigeben',
+        'page callback' => 'angelio_gutschein_clear',
+        'page arguments' => array(2,3), 
+        'access arguments' => array('administer site configuration'),
+    );    
+    
+    
     $items['gutschein/%/%'] = array(
         'title' => 'Gutschein ausdrucken',
         'page callback' => 'angelio_gutschein_drucken',
         'page arguments' => array(1,2), 
         'access arguments' => array('access content'),
     );
+    
     
     
  /*  
@@ -2639,47 +2648,86 @@ function angelio_gutschein_check($uid,$gid) {
 
     $user = user_load($uid);
     $gutschein = node_load($gid);
+    $anzahl = $gutschein->field_max_einloesungen['und'][0]['value'];
     $member = angelio_get_userobject($uid);
     $partner = node_load($gutschein->field_partnerfirma['und'][0]['nid']);
     $partnername = $partner->title;
     
     $output = '<h4>' . $gutschein->title . '</h4><h5>' . $partnername . '</h5><p>f&uuml;r <b>' . $member->first_name . ' ' . $member->last_name . ' (' . $user->name . ')</b> einlösen?</p>';
 
-    $result = db_query('SELECT * FROM gutscheine WHERE uid=' . $uid . ' AND gid=' . $gid )->fetchAllAssoc('uid');
+    $result = db_query('SELECT * FROM gutscheine WHERE uid=' . $uid . ' AND gid=' . $gid );
     if ($result) {
-             
+        $count = 0;
+        foreach ($result as $row) {
+            $count++;
+        }
+        if ($count < $anzahl) {
+            $output .= '<div style="color:green; font-size:16px;">Der Gutschein wurde ' . $count . ' mal von ' . $anzahl . ' mal eingelöst!<br>&nbsp;';
+            $gsform = drupal_get_form('angelio_gutschein_check_form',array($uid,$gid));
+            $output .= render($gsform);
+        } else {
+            $output .= '<div style="color:red; font-size:16px;">Der Gutschein wurde schon ' . $count . ' mal von ' . $anzahl . ' mal eingelöst!';        
+        }
     } else {
         $output .= "<p>Der Gutschein wurde vom Mitglied noch nicht eingel&ouml;st.</p>";
-        $gsform = drupal_get_form('angelio_gutschein_check_form');
+        $gsform = drupal_get_form('angelio_gutschein_check_form',array($uid,$gid));
         $output .= render($gsform);
     }
         
     return $output;
 }
 
-function angelio_gutschein_check_form(){
+
+function angelio_gutschein_clear($uid,$gid) {
+    db_query('DELETE FROM gutscheine WHERE uid=' . $uid . ' AND gid=' . $gid)->execute();
+    return "Gutscheine sind wieder freigegeben.";
+}
+
+function angelio_gutschein_check_form($form,&$form_state,$args){
     $form = array();
+    $form['uid'] = array(
+        '#type' => 'hidden',
+        '#value' => $args[0],
+    );
+       
+    $form['gid'] = array(
+        '#type' => 'hidden',
+        '#value' => $args[1],
+    );
+    
     $form['frage'] = array(
         '#markup' => '<h4>Den Gutschein jetzt einlösen?</h4>',
     );
     $form['submit_ja'] = array(
         '#type' => 'submit',
-        '#value' => '--- Ja ---'
+        '#value' => '  --- Ja ---  '
     );
     
     $form['submit_nein'] = array(
         '#type' => 'submit',
-        '#value' => '--- Nein ---'
+        '#value' => '  --- Nein ---  '
     );
     
     return $form;
 }
 
 function angelio_gutschein_check_form_submit($form,&$form_state){
-    if($form_state['values']['op'] == '--- Ja ---'){
-        drupal_set_message("Der Gutschein wurde eingel&ouml;st!");
+    if($form_state['values']['op'] == '  --- Ja ---  '){
+        $now = date("Y-m-d H:i:s", time());
+        $success = db_insert('gutscheine')
+            ->fields(array(
+            'uid' => $form_state['values']['uid'],
+            'gid' => $form_state['values']['gid'],
+            'datum' => $now
+            ))->execute();
+        if ($success=='0') {
+            drupal_set_message("Der Gutschein wurde eingel&ouml;st!");
+        } else {
+            drupal_set_message($success);
+            drupal_set_message("Es ist ein Fehler beim Speichern aufgetreten","error");
+        }
         drupal_goto("/partnerfirmen");
-    } else if($form_state['values']['op'] == '--- Nein ---'){
+    } else if($form_state['values']['op'] == '  --- Nein ---  '){
         drupal_set_message("Der Gutschein wurde NICHT eingel&ouml;st!");
         drupal_goto("/partnerfirmen");
     }
