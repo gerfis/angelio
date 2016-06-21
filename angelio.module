@@ -2639,13 +2639,59 @@ function angelio_gutschein_check($uid,$gid) {
 
     $user = user_load($uid);
     $gutschein = node_load($gid);
+    $member = angelio_get_userobject($uid);
+    $partner = node_load($gutschein->field_partnerfirma['und'][0]['nid']);
+    $partnername = $partner->title;
     
-    $output = 'Gutschein<br><br><b>"' . $gutschein->title . '"</b><br><br>f&uuml;r ' . $user->name . ' einlösen?';    
+    $output = '<h4>' . $gutschein->title . '</h4><h5>' . $partnername . '</h5><p>f&uuml;r <b>' . $member->first_name . ' ' . $member->last_name . ' (' . $user->name . ')</b> einlösen?</p>';
+
+    $result = db_query('SELECT * FROM gutscheine WHERE uid=' . $uid . ' AND gid=' . $gid )->fetchAllAssoc('uid');
+    if ($result) {
+             
+    } else {
+        $output .= "<p>Der Gutschein wurde vom Mitglied noch nicht eingel&ouml;st.</p>";
+        $gsform = drupal_get_form('angelio_gutschein_check_form');
+        $output .= render($gsform);
+    }
+        
     return $output;
 }
 
+function angelio_gutschein_check_form(){
+    $form = array();
+    $form['frage'] = array(
+        '#markup' => '<h4>Den Gutschein jetzt einlösen?</h4>',
+    );
+    $form['submit_ja'] = array(
+        '#type' => 'submit',
+        '#value' => '--- Ja ---'
+    );
+    
+    $form['submit_nein'] = array(
+        '#type' => 'submit',
+        '#value' => '--- Nein ---'
+    );
+    
+    return $form;
+}
+
+function angelio_gutschein_check_form_submit($form,&$form_state){
+    if($form_state['values']['op'] == '--- Ja ---'){
+        drupal_set_message("Der Gutschein wurde eingel&ouml;st!");
+        drupal_goto("/partnerfirmen");
+    } else if($form_state['values']['op'] == '--- Nein ---'){
+        drupal_set_message("Der Gutschein wurde NICHT eingel&ouml;st!");
+        drupal_goto("/partnerfirmen");
+    }
+}
+
+
 function angelio_gutschein_drucken($uid,$gid) {
 global $user;
+
+    if ($uid == 0) {
+        return "<h3>Diesen Gutschein k&ouml;nnen nur angelio Mitglieder ausdrucken.</h3><p>Bitte wenden Sie sich an eines unserer Mitglieder oder kontaktieren Sie uns unter <a href='mailto:office@angelio.at'>office@angelio.at</a>!</p>";
+    }
 
     if($uid!='0') {
         $userdata = angelio_get_userdata($uid);
