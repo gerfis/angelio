@@ -162,7 +162,7 @@ Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitgliede
 	  '#element_validate' => array('angelio_geburtstag_validate'),
 	  '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse"><p>Um Mitglied beim Verein angelio zu werden, bedarf es für Minderjährige (unter 18 Jahre) der ausdrücklichen Zustimmung eines Erziehungsberechtigten.
 Wir benötigen in diesem Fall eine Einverständniserklärung, die Sie <a href="/downloads/Einverstaendniserklaerung.pdf" target="_blank">hier ausdrucken</a> können. Per Fax, E-Mail oder Post muss diese unverzüglich an uns gesendet werden.
-Sollten wir die Einverständniserklärung nicht innerhalb der gesetzlichen Kündigungsfrist von 14 Tagen erhalten, dann müssen wir von uns aus eine Kündigung des minderjährigen Mitglieds durchführen.</p></div>',
+Sollten wir die Einverständniserklärung nicht innerhalb der gesetzlichen Kündigungsfrist von 14 Tagen erhalten, dann müssen wir von uns aus eine Kündigung des minderjährigen Mitglieds durchführen.<br>ACHTUNG: Personen &uuml;ber 74 Jahre bekommen die Unfallversicherung als Rente ausbezahlt!</div>',
 	  '#weight' => 1,	
 	);
 	
@@ -448,7 +448,7 @@ function angelio_geburtstag_validate($element, &$form_state) {
     form_error($element, t('Das Geburtsjahr "%d" ist ungültig. Das Mindestalter ist 1 Jahr!',array('%d' => $geburtstag['year'])));
   }
   if(date('Y',time()) - $geburtstag['year'] > 74) {
-    form_error($element, t('Das Geburtsjahr "%d" ist ungültig. Das Höchstalter ist 75 Jahre!',array('%d' => $geburtstag['year'])));
+    drupal_set_message("ACHTUNG: Sie sind &uuml;ber 75 Jahre alt und bekommen die Unfallversicherung als Rente ausbezahlt!","warning");
   }  
 }
 
