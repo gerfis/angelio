@@ -305,6 +305,7 @@ function angelio_mail($key, &$message, $params) {
       $body .= "User: " . $params['user'] . "\n";
       $body .= "UId: " . $params['uid'] . "\n";
       $body .= "User E-Mail: " . $params['usermail'] . "\n\n";
+      $body .= "<a href='http://www.angelio.at/amazon-aktivieren/" .$params['uid']."'>http://www.angelio.at/amazon-aktivieren/" .$params['uid']."</a>"; 
       $message['body'][] = $body;
       break; 
     case 'amazonAktiviert':
@@ -613,14 +614,6 @@ function angelio_menu() {
         'type' => MENU_CALLBACK,
     );
     
-    
-    $items['amazon-aktivieren'] = array(
-        'title' => 'Amazon wurde aktiviert!',
-        'page callback' => 'angelio_amazon_aktivieren',
-        'page arguments' => array('0'),               
-        'access arguments' => array('access own downline'),
-        'type' => MENU_CALLBACK,
-    );
     
     $items['amazon-aktivieren/%'] = array(
         'title' => 'Amazon wurde aktiviert!',
