@@ -298,14 +298,25 @@ function angelio_mail($key, &$message, $params) {
       $body .= "Backup E-Mail: " . $params['Email'] . "\n";
       $message['body'][] = $body;
       break;      
-    case 'amazonID':
+    case 'amazonBeantragt':
       // note: data can be passed to this function in the $params array
       $message['subject'] = "angelio Amazon ID beantragt";
-      $body = "User: " . $params['user'] . "\n";
+      $body = "Bitte Amazon ID einrichten:\n\n";
+      $body .= "User: " . $params['user'] . "\n";
       $body .= "UId: " . $params['uid'] . "\n";
       $body .= "User E-Mail: " . $params['usermail'] . "\n\n";
       $message['body'][] = $body;
       break; 
+    case 'amazonAktiviert':
+      // note: data can be passed to this function in the $params array
+      $message['subject'] = "Deine angelio Amazon ID wurde aktiviert";
+      $body = "Hallo " . $params['vorname'] . "!\n\n";
+      $body .= "Deine Amazon ID wurde aktiviert: angel" . $params['uid'] . "-21.\n\n";
+      $body .= "Das ist Dein Amazon Link: <a target='_blank' href='http://www.amazon.de/?tag=angel" . $params['uid'] . "-21'>http://www.amazon.de/?tag=angel" . $params['uid'] . "-21</a>\n\n";
+      $body .= "Das ist Dein Amazon BuyVIP Link: <a target='_blank' href='http://de.buyvip.com/?tag=angel" . $params['uid'] . "-21'>http://de.buyvip.com/?tag=angel" . $params['uid'] . "-21</a>\n\n";
+      $body .= "Dein angelio Team";
+      $message['body'][] = $body;
+      break;
       
   }
 }
@@ -615,7 +626,7 @@ function angelio_menu() {
         'title' => 'Amazon wurde aktiviert!',
         'page callback' => 'angelio_amazon_aktivieren',
         'page arguments' => array(1),               
-        'access arguments' => array('access own downline'),
+        'access arguments' => array('administer site configuration'),
         'type' => MENU_CALLBACK,
     );
 	
@@ -2875,16 +2886,16 @@ function angelio_amazon_beantragen() {
 
     $params = array(
     'user' => $userdata->username,
-    'uid' => $uid,
+    'uid' => $userdata->member_id, 
     'usermail' => $userdata->email,
     );
 
     $to = 'office@gerhardfischer.at';
     
-    $sent = drupal_mail('angelio', 'amazonID', $to , language_default(), $params, 'support@angelio.at');
+    $sent = drupal_mail('angelio', 'amazonBeantragt', $to , language_default(), $params, 'support@angelio.at');
     
     if($sent){
-        $output = 'Ein E-Mail wurde an den Support gesendet. Wir werden deine Amazon ID jetzt einrichten und geben dir Bescheid, wenn alles fertig ist. Das kann 1-3 Werktage dauern.';    
+        $output = 'Ein E-Mail wurde an den Support gesendet. <br>Wir werden deine Amazon ID jetzt einrichten und geben dir Bescheid, wenn alles fertig ist. <br>Das kann 1-3 Werktage dauern.';    
     } else {
         $output = 'Es ist ein Fehler aufgetreten. Bitte wende dich an den Support.';
     }
@@ -2896,19 +2907,36 @@ function angelio_amazon_aktivieren($uid) {
 global $user;
 
     if($uid!='0') {
-        $userdata = angelio_get_userdata($uid);
+        $userdata = angelio_get_userobject($uid);
     } else {
         $uid = $user->uid;
-        $userdata = angelio_get_userdata($uid);
+        $userdata = angelio_get_userobject($uid);
     }
+    
+  db_set_active("angelio_daten");
+  $result = db_query("SELECT uid FROM tbl_Amazon WHERE uid=" . $uid)->fetchCol();
+  db_set_active();
+  if (!isset($result[0])) {
         db_set_active("angelio_daten");
         $success = db_insert('tbl_Amazon')
             ->fields(array(
             'uid' => $uid
             ))->execute();
         db_set_active();        
+  }
+
+    $params = array(
+    'user' => $userdata->username,
+    'uid' => $userdata->member_id, 
+    'vorname' => $userdata->first_name,
+    'usermail' => $userdata->email,
+    );
+
+    $to = 'office@gerhardfischer.at,'.$userdata->email;
     
-    $output = "<h5>Deine Amazon ID wurde aktiviert: angel" . $uid . "-21.</h5>";
+    $sent = drupal_mail('angelio', 'amazonAktiviert', $to , language_default(), $params, 'support@angelio.at');
+
+    $output = "<h5>Die Amazon ID wurde aktiviert: angel" . $uid . "-21.</h5>";
     $output .= "<p>Das ist Dein Amazon Link: <a target='_blank' href='http://www.amazon.de/?tag=angel" . $uid . "-21'>http://www.amazon.de/?tag=angel" . $uid . "-21</a></p>";
     $output .= "<p>Das ist Dein Amazon BuyVIP Link: <a target='_blank' href='http://de.buyvip.com/?tag=angel" . $uid . "-21'>http://de.buyvip.com/?tag=angel" . $uid . "-21</a></p>";
     return $output;
