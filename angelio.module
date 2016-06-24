@@ -313,6 +313,7 @@ function angelio_mail($key, &$message, $params) {
       $message['subject'] = "Deine angelio Amazon ID wurde aktiviert";
       $body = "Hallo " . $params['vorname'] . "!\n\n";
       $body .= "Deine Amazon ID wurde aktiviert: angel" . $params['uid'] . "-21.\n\n";
+      $body .= "Mit diesen Links werden Dir ab sofort Deine Einkäufe bei Amazon zugeordnet:\n\n";
       $body .= "Das ist Dein Amazon Link: <a target='_blank' href='http://www.amazon.de/?tag=angel" . $params['uid'] . "-21'>http://www.amazon.de/?tag=angel" . $params['uid'] . "-21</a>\n\n";
       $body .= "Das ist Dein Amazon BuyVIP Link: <a target='_blank' href='http://de.buyvip.com/?tag=angel" . $params['uid'] . "-21'>http://de.buyvip.com/?tag=angel" . $params['uid'] . "-21</a>\n\n";
       $body .= "Dein angelio Team";
