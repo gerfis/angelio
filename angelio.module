@@ -2662,6 +2662,7 @@ function angelio_gutschein_check($uid,$gid) {
     
     db_set_active("angelio_daten");
     $result = db_query('SELECT * FROM tbl_Gutscheine WHERE uid=' . $uid . ' AND gid=' . $gid );
+    db_set_active();
     if ($result) {
         $count = 0;
         foreach ($result as $row) {
@@ -2679,7 +2680,6 @@ function angelio_gutschein_check($uid,$gid) {
         $gsform = drupal_get_form('angelio_gutschein_check_form',array($uid,$gid));
         $output .= render($gsform);
     }
-    db_set_active();
     return $output;
 }
 
