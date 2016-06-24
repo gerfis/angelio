@@ -585,6 +585,22 @@ function angelio_menu() {
         'access arguments' => array('access own downline'),
         'type' => MENU_CALLBACK,
     );
+
+    $items['amazon_aktivieren'] = array(
+        'title' => 'Amazon wurde aktiviert!',
+        'page callback' => 'angelio_amazon_aktivieren',
+        'page arguments' => array('0'),               
+        'access arguments' => array('access own downline'),
+        'type' => MENU_CALLBACK,
+    );
+    
+    $items['amazon_aktivieren/%'] = array(
+        'title' => 'Amazon wurde aktiviert!',
+        'page callback' => 'angelio_amazon_aktivieren',
+        'page arguments' => array(1),               
+        'access arguments' => array('access own downline'),
+        'type' => MENU_CALLBACK,
+    );
 	
     $items['gs/check/%/%'] = array(
         'title' => 'Gutschein einlösen',
@@ -2834,4 +2850,26 @@ global $user;
     
     //Close and output PDF document
     $pdf->Output('angelio_flyer_A4.pdf', 'I');
+}
+
+function angelio_amazon_aktivieren($uid) {
+global $user;
+
+    if($uid!='0') {
+        $userdata = angelio_get_userdata($uid);
+    } else {
+        $uid = $user->uid;
+        $userdata = angelio_get_userdata($uid);
+    }
+        db_set_active("angelio_daten");
+        $success = db_insert('tbl_Amazon')
+            ->fields(array(
+            'uid' => $uid
+            ))->execute();
+        db_set_active();        
+    
+    $output = "<h5>Deine Amazon ID wurde aktiviert: angel" . $uid . "-21.</h5>";
+    $output .= "<p>Das ist Dein Amazon Link: <a target='_blank' href='http://www.amazon.de/?tag=angel" . $uid . "-21'>http://www.amazon.de/?tag=angel" . $uid . "-21</a></p>";
+    $output .= "<p>Das ist Dein Amazon BuyVIP Link: <a target='_blank' href='http://de.buyvip.com/?tag=angel" . $uid . "-21'>http://de.buyvip.com/?tag=angel" . $uid . "-21</a></p>";
+    return $output;
 }
