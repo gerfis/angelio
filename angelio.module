@@ -2883,7 +2883,7 @@ function angelio_amazon_beantragen() {
     'usermail' => $userdata->email,
     );
 
-    $to = 'office@gerhardfischer.at';
+    $to = 'support@angelio.at';
     
     $sent = drupal_mail('angelio', 'amazonBeantragt', $to , language_default(), $params, 'support@angelio.at');
     
@@ -2925,7 +2925,7 @@ global $user;
     'usermail' => $userdata->email,
     );
 
-    $to = 'office@gerhardfischer.at,'.$userdata->email;
+    $to = 'support@angelio.at,'.$userdata->email;
     
     $sent = drupal_mail('angelio', 'amazonAktiviert', $to , language_default(), $params, 'support@angelio.at');
 
