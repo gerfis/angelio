@@ -1950,11 +1950,16 @@ global $user;
 	$sql = "SELECT strBonusart, sum(dblBetrag) as Summe FROM {tbl_Konto_online} WHERE datAbrechnungsdatum <= NOW() AND SponsorID=" . $userdata->member_id . " GROUP BY strBonusart ORDER BY strBonusart";
 	$result = db_query($sql);
 	$gesamt = 0.0;
+    $angel = false;
 			
+           
 	$output .= '<table id="tblCommissionMonate"><tr><th class="tblCommissionCol2">Bonusart</th><th class="tblCommissionCol3">Summe Provision</th><tr>';
 	while ($row = $result->fetchAssoc()) {
-		$output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td></tr>';
-		$gesamt = $gesamt + (float)$row['Summe'];
+	    if ($row['strBonusart'] == "Angelprovision") {$angel = true;}
+	    if ($angel && $row['strBonusart']!="Startprovision") {
+		  $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td></tr>';
+		  $gesamt = $gesamt + (float)$row['Summe'];
+        }
 	} 
 	$output .= '<tr><td class="tblCommissionCol1"><strong>Gesamtprovisionen</strong></td><td class="tblCommissionCol2"><strong>' . number_format($gesamt, 2, ',','.')  . '&euro;</strong></td></tr>';
 	$output .= '</table>';
