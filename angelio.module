@@ -1937,33 +1937,31 @@ global $user;
 	$output .= '<tr><td class="tblCommissionCol1"><b>Summe:</b></td><td class="tblCommissionCol2"><b>' . $summe_kunden . '</b></td><td class="tblCommissionCol3"><b>' . number_format((float)$summe_provision, 2, ',','.')  . '&euro;</b></td></tr>'; 
 	$output .= '</table>'; 
 	
-	$output .= "<hr><br><h3>Verdienst der Linien:</h3>";
+	$output .= "<hr><br><h3>Entwicklung der Linien:</h3>";
 
 	$sql = "SELECT * FROM {tbl_Kunden_Online} WHERE SponsorID_O=" . $userdata->member_id;
 	$result = db_query($sql);
 	
-	$output .= '<table id="tblCommissionEbenen"><tr><th class="tblCommissionCol1">Frontline</th><th class="tblCommissionCol2">Anzahl Mitglieder</th><th class="tblCommissionCol3">Laufende Provision</th><th class="tblCommissionCol3">Aktiv</th><tr>';		
+	$output .= '<table id="tblCommissionEbenen"><tr><th class="tblCommissionCol1">Frontline</th><th class="tblCommissionCol2">Anzahl Mitglieder (inkl. Frontline)</th><tr>';		
 	while ($row = $result->fetchAssoc()) {
 		switch ($bonuslevel) {
 			case 2:
-				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision, strUsername_O as Kunde, ysnInaktiv as Aktiv FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 7 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
+				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, strUsername_O as Kunde FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 7 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
 				break;
 			case 3:
-				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision, strUsername_O as Kunde, ysnInaktiv as Aktiv FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 8 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
+				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, strUsername_O as Kunde FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 8 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
 				break;
 			case 4:
-				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision, strUsername_O as Kunde, ysnInaktiv as Aktiv FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 9 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
+				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, strUsername_O as Kunde FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 9 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
 				break;				
 		}
 		
 		$frontline = db_query($sql)->fetchAssoc();
-		$aktiv = ($frontline['Aktiv'] == 0) ? 'Ja' : 'Nein';
-		$kunden = ($frontline['Kunden'] == "") ? '0' : $frontline['Kunden'];
-		$provision = ($frontline['Provision'] == "") ? '0' : $frontline['Provision'];
+		$kunden = ($frontline['Kunden'] == "") ? '1' : $frontline['Kunden'] + 1;
 		if (user_access('access all provisionen')) {
-			$output .= '<tr><td class="tblCommissionCol1"><a href="/provision/' . $frontline['sponsorID'] . '">' . $frontline['Kunde'] . '</a></td><td class="tblCommissionCol2">' . $kunden . '</td><td class="tblCommissionCol3">' . number_format((float)$provision, 2, ',','.') . '&euro;</td><td class="tblCommissionCol2">' . $aktiv . '</td></tr>';
+			$output .= '<tr><td class="tblCommissionCol1"><a href="/provision/' . $frontline['sponsorID'] . '">' . $frontline['Kunde'] . '</a></td><td class="tblCommissionCol2">' . $kunden . '</td></tr>';
 		} else {
-			$output .= '<tr><td class="tblCommissionCol1">' . $frontline['Kunde'] . '</td><td class="tblCommissionCol2">' . $kunden . '</td><td class="tblCommissionCol3">' . number_format((float)$provision, 2, ',','.') . '&euro;</td><td class="tblCommissionCol2">' . $aktiv . '</td></tr>';			
+			$output .= '<tr><td class="tblCommissionCol1">' . $frontline['Kunde'] . '</td><td class="tblCommissionCol2">' . $kunden . '</td></tr>';			
 		}
 	} 
 
@@ -1997,13 +1995,18 @@ global $user;
 	    if ($angel && $row['strBonusart']!="Startprovision") {
 		  $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td></tr>';
 		  $gesamt = $gesamt + (float)$row['Summe'];
+        } else if(!$angel) {
+          $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td></tr>';
+          $gesamt = $gesamt + (float)$row['Summe'];            
         }
 	} 
 	$output .= '<tr><td class="tblCommissionCol1"><strong>Gesamtprovisionen</strong></td><td class="tblCommissionCol2"><strong>' . number_format($gesamt, 2, ',','.')  . '&euro;</strong></td></tr>';
 	$output .= '</table>';
 	
+    /*
 	$output .= '<br><div style="font-size:11px">(<sup>*</sup>)  Startprovision: Sobald Du mindestens 3 Personen innerhalb von 30 Tagen nach Deinem Vereinsbeitritt geworben hast, tritt der Schnellstartbonus in Kraft.
 Technisch ist es uns aber nur möglich, 44 Euro anstatt die höhere Startprovision von 88 Euro anzuzeigen. Die Anhebung passiert erst nach der 30-tägigen Zeitspanne inkl. Kündigungsfrist!</div>';
+     */
 
 /*	
 	$output .= "<hr><br><h3>Zu erwartende Provisionen im kommenden Jahr<sup>**</sup>:</h3>";	
