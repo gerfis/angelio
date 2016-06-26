@@ -2950,9 +2950,7 @@ global $user;
     }
 
     $scheck = $_SERVER['DOCUMENT_ROOT'] . '/downloads/angelio-scheck.png';
-    $font = $_SERVER['DOCUMENT_ROOT'] . '/downloads/BRUSHSCI.TTF';
     $font = $_SERVER['DOCUMENT_ROOT'] . '/downloads/segoesc.ttf';
-    //$font = $_SERVER['DOCUMENT_ROOT'] . '/downloads/FREESCPT.TTF';
      
     $img = imagecreatefrompng($scheck);  //--- open img file ---
     
@@ -2963,46 +2961,9 @@ global $user;
     imagettftext($img, 27, 0, 180, 220, $text_color, $font, $text); 
     imagettftext($img, 27, 0, 700, 140, $text_color, $font, $datum);
     imagettftext($img, 27, 0, 950, 225, $text_color, $font, $betrag . ',-'); 
-    imagettftext($img, 27, 0, 180, 280, $text_color, $font, num2text(intval($betrag))); 
+    imagettftext($img, 27, 0, 120, 280, $text_color, $font, "-- " . num2text(intval($betrag)) . " --"); 
     imagepng($img);
     imagedestroy($img);
 
-/*
-    $png = imagecreatetruecolor(800, 600);
-    imagesavealpha($png, true);
-
-    $trans_colour = imagecolorallocatealpha($png, 0, 0, 0, 127);
-    imagefill($png, 0, 0, $trans_colour);
-   
-    $red = imagecolorallocate($png, 255, 0, 0);
-    imagefilledellipse($png, 400, 300, 400, 300, $red);
-   
-    header("Content-type: image/png");
-    imagepng($png);
- *
- */
- 
- /*
-//-------------------------------------------------- SIMPLE EXAMPLE
-    $scheck = $_SERVER['DOCUMENT_ROOT'] . '/downloads/angelio-scheck.png';
-    $img = imagecreatefrompng($scheck);  //--- open img file ---
-    $thumb = 200;  //--- max. size of thumb ---
-    if ($x > $y) {
-        $tx = $thumb;  //--- landscape ---
-        $ty = round($thumb / $x * $y);
-    } else {
-        $tx = round($thumb / $y * $x);  //--- portrait ---
-        $ty = $thumb;
-    }
-    $thb = imagecreatetruecolor ($tx, $ty);  //--- create thumbnail ---
-    imagecopyresampled ($thb,$img, 0,0, 0,0, $tx,$ty, $x,$y);
-    //imagepng($thb, 'your_thumbnail.png', 80);
-
-    header("Content-type: image/png");
-    imagepng($thb);
-    imagedestroy ($thb);
-    imagedestroy ($img);
-  * 
-  */
 }
 
