@@ -1904,6 +1904,13 @@ global $user;
 		$userdata = angelio_get_userobject($uid);
 	}
 
+
+    $date = new DateTime($userdata->created);
+    $now = new DateTime();
+    $tage = $date->diff($now)->format("%d");
+    $monate = $date->diff($now)->format("%m");
+    $starttag = $date->format("d.m.Y");
+    
 	drupal_set_title('Abrechnung von ' . $userdata->first_name);
 
 	$bonuslevel = $userdata->bonuslevel;
@@ -2008,22 +2015,6 @@ global $user;
 Technisch ist es uns aber nur möglich, 44 Euro anstatt die höhere Startprovision von 88 Euro anzuzeigen. Die Anhebung passiert erst nach der 30-tägigen Zeitspanne inkl. Kündigungsfrist!</div>';
      */
 
-/*	
-	$output .= "<hr><br><h3>Zu erwartende Provisionen im kommenden Jahr<sup>**</sup>:</h3>";	
-	$sql = "SELECT YEAR(datAbrechnungsdatum) as Jahr, MONTH(datAbrechnungsdatum) as Monat, sum(dblBetrag) as Summe, strBonusart FROM `tbl_Konto_online` WHERE datAbrechnungsdatum>NOW() AND SponsorID=" . $userdata->member_id . " GROUP BY YEAR(datAbrechnungsdatum), MONTH(datAbrechnungsdatum) order by YEAR(datAbrechnungsdatum), MONTH(datAbrechnungsdatum), strBonusart";
-	$result = db_query($sql);
-	$gesamt = 0.0;
-			
-	$output .= '<table id="tblCommissionMonate"><tr><th class="tblCommissionCol2">Monat</th><th class="tblCommissionCol3">Provision</th><th class="tblCommissionCol3">Provisionsart</th><tr>';
-	while ($row = $result->fetchAssoc()) {
-		$output .= '<tr><td class="tblCommissionCol2">' . $row['Monat'] . '/' . $row['Jahr'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td></tr>';
-		$gesamt = $gesamt + (float)$row['Summe'];
-	} 
-	$output .= '<tr><td class="tblCommissionCol1"><strong>Gesamt</strong></td><td class="tblCommissionCol2"><strong>' . number_format($gesamt, 2, ',','.')  . '&euro;</strong></td><td>&nbsp;</td></tr>';
-	$output .= '</table>';
-	$output .= '<br><div style="font-size:11px">(<sup>**</sup>) Das sind prognostizierte Werte und gelten nur, wenn niemand in deiner Downline dazukommt und niemand aus deiner Downline kündigt!</div>';
-	*/
-	
 	db_set_active();	
 	return $output;
 }

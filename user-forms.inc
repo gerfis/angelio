@@ -721,7 +721,7 @@ function angelio_user_edit_form_submit($form, &$form_state) {
 	db_set_active();
 	
 	if (!$success) {
-		drupal_set_message("Der Benutzer wurde NICHT gespeichert.", 'error');
+		drupal_set_message("Die Benutzerdaten wurde NICHT ge&auml;ndert.", 'warining'); 
 		return false;
 	}
 	else {
