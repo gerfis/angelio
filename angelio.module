@@ -2952,7 +2952,7 @@ global $user;
     $scheck = $_SERVER['DOCUMENT_ROOT'] . '/downloads/angelio-scheck.png';
     $font = $_SERVER['DOCUMENT_ROOT'] . '/downloads/BRUSHSCI.TTF';
     $font = $_SERVER['DOCUMENT_ROOT'] . '/downloads/segoesc.ttf';
-    $font = $_SERVER['DOCUMENT_ROOT'] . '/downloads/FREESCPT.TTF';
+    //$font = $_SERVER['DOCUMENT_ROOT'] . '/downloads/FREESCPT.TTF';
      
     $img = imagecreatefrompng($scheck);  //--- open img file ---
     
@@ -2960,10 +2960,10 @@ global $user;
     $text_color = imagecolorallocate($img, 5, 57, 143);
     
     $text = $userdata->first_name . " " . $userdata->last_name . " (" . $userdata->username . ")";
-    imagettftext($img, 40, 0, 180, 220, $text_color, $font, $text); 
-    imagettftext($img, 40, 0, 700, 140, $text_color, $font, $datum);
-    imagettftext($img, 40, 0, 950, 230, $text_color, $font, $betrag . ',-'); 
-    imagettftext($img, 40, 0, 180, 280, $text_color, $font, num2text(intval($betrag))); 
+    imagettftext($img, 27, 0, 180, 220, $text_color, $font, $text); 
+    imagettftext($img, 27, 0, 700, 140, $text_color, $font, $datum);
+    imagettftext($img, 27, 0, 950, 225, $text_color, $font, $betrag . ',-'); 
+    imagettftext($img, 27, 0, 180, 280, $text_color, $font, num2text(intval($betrag))); 
     imagepng($img);
     imagedestroy($img);
 
