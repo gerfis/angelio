@@ -14,7 +14,11 @@ global $user;
 		$sponsor_name = $_SESSION['sponsor_name'];
 	} 
 
-
+    $sponsor_description = '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">Wenn das Feld leer ist, dann müssen Sie hier den Benutzernamen der Person einfügen, die Ihnen angelio empfohlen hat.</div>';
+    if ($sponsor_name!='') {
+        $sponsor = angelio_get_userobject($sponsor_name);
+        $sponsor_description = 'Ihr Sponsor ist: ' .  $sponsor->first_name . ' ' . $sponsor->last_name . '. E-Mail: ' . $sponsor->email . ', Tel: ' . $sponsor->phone;
+    }
 
 	// hilfe öffnen link:
 	$form['account']['script'] = array(
@@ -50,11 +54,22 @@ Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitgliede
 	    '#type' => 'textfield',
 	    '#required' => TRUE,
 	    '#element_validate' => array('angelio_username_validate'),
-	    '#weight' => 2,
+	    '#weight' => 1,
 	);
 	
 	$form['account']['mail']['#description'] = '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">Eine gültige E-Mail-Adresse. Alle E-Mails der Website werden an diese Adresse geschickt. Die Adresse wird nicht veröffentlicht und wird nur verwendet, wenn Sie ein neues Passwort anfordern oder wenn Sie einstellen, bestimmte Informationen oder Benachrichtigungen per E-Mail zu erhalten.</div>';
-	
+	$form['account']['mail']['#weight'] = 2;
+    $form['account']['mail2'] = array(
+        '#title' => 'E-Mail-Adresse wiederholen',
+        '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">Bitte wiederholen Sie hier zur Sicherheit Ihre E-Mail Adresse.</div>',
+        '#type' => 'textfield',
+        '#required' => TRUE,
+        '#element_validate' => array('angelio_emailadresse_validate'),
+        '#weight' => 3,
+    );
+    $form['account']['pass']['#weight'] = 4;
+    
+    
 	$form['benutzer'] = array(
 	  '#type' => 'fieldset',
 	  '#weight' => 1,
@@ -62,7 +77,7 @@ Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitgliede
 	
 	$form['benutzer']['sponsor'] = array(
 	  '#title' => 'Wer hat dir den Verein angelio empfohlen?',
-	  '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">Wenn das Feld leer ist, dann müssen Sie hier den Benutzernamen der Person einfügen, die Ihnen angelio empfohlen hat.</div>',
+	  '#description' => $sponsor_description,
 	  '#type' => 'textfield',
 	  '#element_validate' => array('angelio_sponsor_validate'),
 	  '#required' => TRUE,
@@ -160,9 +175,9 @@ Andererseits wird dieser Name verwendet, wenn Sie weitere Personen als Mitgliede
 	  ),
 	  '#required' => TRUE,  
 	  '#element_validate' => array('angelio_geburtstag_validate'),
-	  '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse"><p>Um Mitglied beim Verein angelio zu werden, bedarf es für Minderjährige (unter 18 Jahre) der ausdrücklichen Zustimmung eines Erziehungsberechtigten.
+	  '#description' => '<div class="form_expand"><span class="form_hilfe">Hilfe öffnen...</span></div><div class="form_collapse">Um Mitglied beim Verein angelio zu werden, bedarf es für Minderjährige (unter 18 Jahre) der ausdrücklichen Zustimmung eines Erziehungsberechtigten.
 Wir benötigen in diesem Fall eine Einverständniserklärung, die Sie <a href="/downloads/Einverstaendniserklaerung.pdf" target="_blank">hier ausdrucken</a> können. Per Fax, E-Mail oder Post muss diese unverzüglich an uns gesendet werden.
-Sollten wir die Einverständniserklärung nicht innerhalb der gesetzlichen Kündigungsfrist von 14 Tagen erhalten, dann müssen wir von uns aus eine Kündigung des minderjährigen Mitglieds durchführen.<br>ACHTUNG: Personen &uuml;ber 74 Jahre bekommen die Unfallversicherung als Rente ausbezahlt!</div>',
+Sollten wir die Einverständniserklärung nicht innerhalb der gesetzlichen Kündigungsfrist von 14 Tagen erhalten, dann müssen wir von uns aus eine Kündigung des minderjährigen Mitglieds durchführen.</div>',
 	  '#weight' => 1,	
 	);
 	
@@ -410,6 +425,12 @@ meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 	}
 }
 
+function angelio_emailadresse_validate($element, &$form_state) {
+    if ($element['#value'] != $form_state['values']['mail']) {
+        form_error($element, 'Die E-Mail Adressen stimmen nicht &uuml;berein!');
+    }    
+}
+
 function angelio_username_validate($element, &$form_state) {
   $username = $element['#value']; 
   if(!angelio_validate_url($username)) {
@@ -447,9 +468,11 @@ function angelio_geburtstag_validate($element, &$form_state) {
   if(date('Y',time()) - $geburtstag['year'] < 1) {
     form_error($element, t('Das Geburtsjahr "%d" ist ungültig. Das Mindestalter ist 1 Jahr!',array('%d' => $geburtstag['year'])));
   }
+  /*
   if(date('Y',time()) - $geburtstag['year'] > 74) {
     drupal_set_message("ACHTUNG: Sie sind &uuml;ber 75 Jahre alt und bekommen die Unfallversicherung als Rente ausbezahlt!","warning");
-  }  
+  } 
+   **/ 
 }
 
 function angelio_iban_validate($element, &$form_state) {
@@ -721,7 +744,7 @@ function angelio_user_edit_form_submit($form, &$form_state) {
 	db_set_active();
 	
 	if (!$success) {
-		drupal_set_message("Die Benutzerdaten wurde NICHT ge&auml;ndert.", 'warining'); 
+		drupal_set_message("Die Profildaten wurde NICHT ge&auml;ndert.", 'warining'); 
 		return false;
 	}
 	else {
