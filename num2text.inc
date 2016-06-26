@@ -5,6 +5,17 @@ define('NUMERAL_HUNDREDS_SUFFIX', 'hundert');
 define('NUMERAL_TENNER_SUFFIX', 'zig');
 define('NUMERAL_INFIX', 'und');
 
+function num2text($number) {
+ global $numeral;
+
+ $prefix = '';
+ if ($number == 0) return $numeral[0]; // null
+ if ($number < 0) $prefix = NUMERAL_SIGN . ' '; // minus …
+ return $prefix . num2text_group(abs($number));
+}
+
+
+function num2text_group($number, $group_level = 0) {
 $numeral = array('null', 'ein', 'zwei', 'drei', 'vier',
                   'fünf', 'sechs', 'sieben', 'acht', 'neun',
                   'zehn', 'elf', 'zwölf', 'drei~', 'vier~',
@@ -20,20 +31,7 @@ $group_suffix[2][0] = 'e Million ';
 $group_suffix[2][1] = ' Millionen ';
 $group_suffix[3][0] = 'e Milliarde ';
 $group_suffix[3][1] = ' Milliarden ';
-
-
-function num2text($number) {
- global $numeral;
-
- $prefix = '';
- if ($number == 0) return $numeral[0]; // null
- if ($number < 0) $prefix = NUMERAL_SIGN . ' '; // minus …
- return $prefix . num2text_group(abs($number));
-}
-
-
-function num2text_group($number, $group_level = 0) {
- global $numeral, $tenner, $group_suffix;
+ 
 
  // Ende der Rekursion erreicht, wenn Zahl gleich Null
  if ($number == 0) return '';

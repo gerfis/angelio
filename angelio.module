@@ -607,6 +607,14 @@ function angelio_menu() {
         'type' => MENU_CALLBACK,
     );
 
+        $items['scheck/%/%/%'] = array(
+        'title' => 'Mein angelio Scheck',
+        'page callback' => 'angelio_scheck',
+        'page arguments' => array(1,2,3),               
+        'access arguments' => array('access own downline'),
+        'type' => MENU_CALLBACK,
+    );
+    
     $items['amazon-beantragen'] = array(
         'title' => 'Amazon ID',
         'page callback' => 'angelio_amazon_beantragen',
@@ -2929,3 +2937,72 @@ global $user;
     $output .= "<p>Das ist Dein Amazon BuyVIP Link: <a target='_blank' href='http://de.buyvip.com/?tag=angel" . $uid . "-21'>http://de.buyvip.com/?tag=angel" . $uid . "-21</a></p>";
     return $output;
 }
+
+
+function angelio_scheck($uid,$betrag,$datum) {
+global $user;
+
+    if($uid!='0') {
+        $userdata = angelio_get_userobject($uid);
+    } else {
+        $uid = $user->uid;
+        $userdata = angelio_get_userobject($uid);
+    }
+
+    $scheck = $_SERVER['DOCUMENT_ROOT'] . '/downloads/angelio-scheck.png';
+    $font = $_SERVER['DOCUMENT_ROOT'] . '/downloads/BRUSHSCI.TTF';
+    $font = $_SERVER['DOCUMENT_ROOT'] . '/downloads/segoesc.ttf';
+    $font = $_SERVER['DOCUMENT_ROOT'] . '/downloads/FREESCPT.TTF';
+     
+    $img = imagecreatefrompng($scheck);  //--- open img file ---
+    
+    header ('Content-Type: image/png');
+    $text_color = imagecolorallocate($img, 5, 57, 143);
+    
+    $text = $userdata->first_name . " " . $userdata->last_name . " (" . $userdata->username . ")";
+    imagettftext($img, 40, 0, 180, 220, $text_color, $font, $text); 
+    imagettftext($img, 40, 0, 700, 140, $text_color, $font, $datum);
+    imagettftext($img, 40, 0, 950, 230, $text_color, $font, $betrag . ',-'); 
+    imagettftext($img, 40, 0, 180, 280, $text_color, $font, num2text(intval($betrag))); 
+    imagepng($img);
+    imagedestroy($img);
+
+/*
+    $png = imagecreatetruecolor(800, 600);
+    imagesavealpha($png, true);
+
+    $trans_colour = imagecolorallocatealpha($png, 0, 0, 0, 127);
+    imagefill($png, 0, 0, $trans_colour);
+   
+    $red = imagecolorallocate($png, 255, 0, 0);
+    imagefilledellipse($png, 400, 300, 400, 300, $red);
+   
+    header("Content-type: image/png");
+    imagepng($png);
+ *
+ */
+ 
+ /*
+//-------------------------------------------------- SIMPLE EXAMPLE
+    $scheck = $_SERVER['DOCUMENT_ROOT'] . '/downloads/angelio-scheck.png';
+    $img = imagecreatefrompng($scheck);  //--- open img file ---
+    $thumb = 200;  //--- max. size of thumb ---
+    if ($x > $y) {
+        $tx = $thumb;  //--- landscape ---
+        $ty = round($thumb / $x * $y);
+    } else {
+        $tx = round($thumb / $y * $x);  //--- portrait ---
+        $ty = $thumb;
+    }
+    $thb = imagecreatetruecolor ($tx, $ty);  //--- create thumbnail ---
+    imagecopyresampled ($thb,$img, 0,0, 0,0, $tx,$ty, $x,$y);
+    //imagepng($thb, 'your_thumbnail.png', 80);
+
+    header("Content-type: image/png");
+    imagepng($thb);
+    imagedestroy ($thb);
+    imagedestroy ($img);
+  * 
+  */
+}
+
