@@ -607,10 +607,10 @@ function angelio_menu() {
         'type' => MENU_CALLBACK,
     );
 
-        $items['scheck/%/%/%'] = array(
+        $items['scheck/%/%/%/%'] = array(
         'title' => 'Mein angelio Scheck',
         'page callback' => 'angelio_scheck',
-        'page arguments' => array(1,2,3),               
+        'page arguments' => array(1,2,3,4),               
         'access arguments' => array('access own downline'),
         'type' => MENU_CALLBACK,
     );
@@ -2057,18 +2057,18 @@ global $user;
 
 	$output .= '<hr><table id="tblCommissionUberweisung"><tr>
 		<th class="tblCommissionCol1" style="width:400px;">Offene Provisonen</th>
-		<th class="tblCommissionCol1">Betrag</th></tr>';
+		<th class="tblCommissionCol1">Betrag</th><th class="tblCommissionCol1">Scheck</th><th class="tblCommissionCol1">Scheck (mit Name)</th></tr>';
 		
 	$sql = "SELECT sum(dblBetrag) as Betrag FROM tbl_Konto_online WHERE datAusbezahltAm IS NULL AND datAbrechnungsdatum <= NOW()  AND SponsorID=" . $userdata->member_id;
 	$result = db_query ($sql)->fetchAssoc();
 	$offen = ($result['Betrag'] == "") ? "0" : $result['Betrag'];
 	
-	$output .= 	'<tr><td class="tblCommissionCol1">Gesamtsumme aller offenen Provisionen</td><td class="tblCommissionCol2" style="text-align:right;">' . number_format((float)$offen, 2, ',','.') . '&euro;</td></tr>';
+	$output .= 	'<tr><td class="tblCommissionCol1">Gesamtsumme aller offenen Provisionen</td><td class="tblCommissionCol2" style="text-align:right;">' . number_format((float)$offen, 2, ',','.') . '&euro;</td><td></td><td></td></tr>';
 					
 	$sql = "SELECT sum(dblBetrag) as Betrag FROM tbl_Konto_online ko JOIN tbl_Kunden_Online ku on ko.KundenID = ku.KundenID_Online WHERE ko.datAusbezahltAm IS NULL AND DATEDIFF(CURDATE(),ku.datAnlageInternet_O) < 15 AND datAbrechnungsdatum <= NOW() AND ko.SponsorID=" . $userdata->member_id;
 	$result = db_query ($sql)->fetchAssoc();
 	$offen_schwebend = ($result['Betrag'] == "") ? "0" : $result['Betrag'];
-	$output .= 	'<tr><td class="tblCommissionCol1">davon noch gesperrt aufgrund Kündigungsfrist</td><td class="tblCommissionCol2" style="text-align:right;">' . number_format((float)$offen_schwebend, 2, ',','.') . '&euro;</td></tr>';	
+	$output .= 	'<tr><td class="tblCommissionCol1">davon noch gesperrt aufgrund Kündigungsfrist</td><td class="tblCommissionCol2" style="text-align:right;">' . number_format((float)$offen_schwebend, 2, ',','.') . '&euro;</td><td></td><td></td></tr>';	
 	
 	$sql = "SELECT datAusbezahltAm, sum(dblBetrag) as Betrag FROM tbl_Konto_online WHERE NOT (datAusbezahltAm IS NULL) AND datAbrechnungsdatum <= NOW() AND SponsorID=" . $userdata->member_id . " group by datAusbezahltAm order by datAusbezahltAm";
 	
@@ -2076,14 +2076,17 @@ global $user;
 
 	while ($row = $result->fetchAssoc()) {
 		$datum = fdate($row["datAusbezahltAm"],"d") . '.' . fdate($row["datAusbezahltAm"],"m") . '.' . fdate($row["datAusbezahltAm"],"Y");
-
+        $f_betrag = number_format((float)$row['Betrag'], 2, ',','.');
+        $i_betrag = intval($row['Betrag']);
+        
 		$output .= 	'<tr><td class="tblCommissionCol1">Auszahlung am ' . $datum .
-		 			'</td><td class="tblCommissionCol2">' . number_format((float)$row['Betrag'], 2, ',','.') . '&euro;' .
-					'</td></tr>';
+		 			'</td><td class="tblCommissionCol2">' . $f_betrag . '&euro;</td>' .
+					'<td><a href="/scheck/0/' . $uid . '/'. $i_betrag . '/' . $datum . '" target="_blank"><img width="80" src="/scheck/0/' . $uid . '/'. $i_betrag . '/' . $datum . '"></a></td>' .
+					'<td><a href="/scheck/1/' . $uid . '/'. $i_betrag . '/' . $datum . '" target="_blank"><img width="80" src="/scheck/1/' . $uid . '/'. $i_betrag . '/' . $datum . '"></a></td></tr>';
 	}
 	$output .= 	'<tr><td class="tblCommissionCol1" style="border-top:1px solid #333;">GESAMTVERDIENST' .
 		 			'</td><td class="tblCommissionCol2" style="border-top:1px solid #333;text-align:right;">' . number_format((float)$gesamt, 2, ',','.') . '&euro;' .
-					'</td></tr>';	
+					'</td><td style="border-top:1px solid #333;" colspan="2"></td></tr>';	
 	$output .= '</table>';  
 		
 			
@@ -2939,7 +2942,7 @@ global $user;
 }
 
 
-function angelio_scheck($uid,$betrag,$datum) {
+function angelio_scheck($name=0,$uid,$betrag,$datum) {
 global $user;
 
     if($uid!='0') {
@@ -2957,7 +2960,11 @@ global $user;
     header ('Content-Type: image/png');
     $text_color = imagecolorallocate($img, 5, 57, 143);
     
-    $text = $userdata->first_name . " " . $userdata->last_name . " (" . $userdata->username . ")";
+    if ($name) {
+        $text = $userdata->first_name . " " . $userdata->last_name . " (" . $userdata->username . ")";
+    } else {
+        $text = $userdata->username;
+    }
     imagettftext($img, 27, 0, 180, 220, $text_color, $font, $text); 
     imagettftext($img, 27, 0, 700, 140, $text_color, $font, $datum);
     imagettftext($img, 27, 0, 950, 225, $text_color, $font, $betrag . ',-'); 
