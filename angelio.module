@@ -1922,7 +1922,7 @@ global $user;
 
          
     $rookie = false;
-    if ($monate == 0 && $tage < 15) {
+    if ($monate == 0 && $tage < 44) {
         db_set_active('angelio_daten');
         $sql = "SELECT count(*) as anzahl FROM {tbl_Kunden_Online} WHERE ReferrerID_O=" . $userdata->member_id;
         $result = db_query($sql)->fetchCol('anzahl');
