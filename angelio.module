@@ -2174,7 +2174,7 @@ global $user;
 	$output .= '<div style="font-size:11px">(<sup>*</sup>) Ausbezahlt werden Beträge erst nach der 14-tägigen Kündigungsfrist von neuen Mitgliedern und frühestens, wenn mindestens 30 Euro in Summe erreicht wurden.</div>';
 			
 	$output .= '<div style="font-size:11px">(<sup>**</sup>)  Startprovision: Sobald Du mindestens 3 Personen innerhalb von 30 Tagen nach Deinem Vereinsbeitritt geworben hast, tritt der Schnellstartbonus in Kraft.
-Technisch ist es uns aber nur möglich, 50 Euro anstatt die höhere Startprovision von 100 Euro anzuzeigen. Die Anhebung passiert erst nach der 30-tägigen Zeitspanne inkl. Kündigungsfrist!</div>';			
+Technisch ist es uns aber nur möglich, 44 Euro anstatt die höhere Startprovision von 88 Euro anzuzeigen. Die Anhebung passiert erst nach der 30-tägigen Zeitspanne plus 14 Tage Kündigungsfrist!</div>';			
 	return $output;		
 }
 
