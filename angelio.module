@@ -2036,7 +2036,7 @@ global $user;
 	$output .= '<tr><td class="tblCommissionCol1"><strong>Gesamtprovisionen</strong></td><td class="tblCommissionCol2"><strong>' . number_format($gesamt, 2, ',','.')  . '&euro;</strong></td></tr>';
 	$output .= '</table>';
 	if ($rookie) {
-	    $output .= "(*) zu erwartende Provision, wenn K&uuml;digungsfristen ablaufen."
+	    $output .= "(*) zu erwartende Provision, wenn K&uuml;digungsfristen ablaufen.";
 	}
 	
     /*
