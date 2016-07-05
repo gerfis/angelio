@@ -1929,6 +1929,7 @@ global $user;
         //dpm($result);
          if ($result[0] > 2) {
              $rookie = true;
+             $output .= "rookie";
          }
         db_set_active();
     }
@@ -2025,12 +2026,12 @@ global $user;
 	    if ($angel && $row['strBonusart']!="Startprovision") {
 		  $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td></tr>';
 		  $gesamt = $gesamt + (float)$row['Summe'];
-        } else if(!$angel) {
-          $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td></tr>';
-          $gesamt = $gesamt + (float)$row['Summe'];            
         } else if($rookie && $row['strBonusart']=="Startprovision") {
           $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe']*2, 2, ',','.')  . '&euro;</td></tr>';
-          $gesamt = $gesamt + (float)$row['Summe']*2;            
+          $gesamt = $gesamt + (float)$row['Summe']*2;
+        } else if(!$angel) {
+          $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td></tr>';
+          $gesamt = $gesamt + (float)$row['Summe'];                        
         }
 	} 
 	$output .= '<tr><td class="tblCommissionCol1"><strong>Gesamtprovisionen</strong></td><td class="tblCommissionCol2"><strong>' . number_format($gesamt, 2, ',','.')  . '&euro;</strong></td></tr>';
