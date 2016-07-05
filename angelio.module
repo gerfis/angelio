@@ -1912,13 +1912,28 @@ global $user;
 		$userdata = angelio_get_userobject($uid);
 	}
 
+    $output = "";
 
     $date = new DateTime($userdata->created);
     $now = new DateTime();
     $tage = $date->diff($now)->format("%d");
     $monate = $date->diff($now)->format("%m");
     $starttag = $date->format("d.m.Y");
+
+         
+    $rookie = false;
+    if ($monate == 0 && $tage < 15) {
+        db_set_active('angelio_daten');
+        $sql = "SELECT count(*) as anzahl FROM {tbl_Kunden_Online} WHERE ReferrerID_O=" . $userdata->member_id;
+        $result = db_query($sql)->fetchCol('anzahl');
+        //dpm($result);
+         if ($result[0] > 2) {
+             $rookie = true;
+         }
+        db_set_active();
+    }
     
+   
 	drupal_set_title('Abrechnung von ' . $userdata->first_name);
 
 	$bonuslevel = $userdata->bonuslevel;
@@ -1935,7 +1950,7 @@ global $user;
 		return "<p>Sie haben noch keine Verdienste...</p>";
 	}
 
-	$output = "<hr><br><h3>Verdienst nach Ebenen gesamt:</h3>";
+	$output .= "<hr><br><h3>Verdienst nach Ebenen gesamt:</h3>";
 
 	$sql = "SELECT * FROM {tbl_stat_Kunden_Downlines} WHERE lngLevel > 0 AND sponsorID=" . $userdata->member_id;
 	
@@ -2013,6 +2028,9 @@ global $user;
         } else if(!$angel) {
           $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td></tr>';
           $gesamt = $gesamt + (float)$row['Summe'];            
+        } else if($rookie && $row['strBonusart']=="Startprovision") {
+          $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe']*2, 2, ',','.')  . '&euro;</td></tr>';
+          $gesamt = $gesamt + (float)$row['Summe']*2;            
         }
 	} 
 	$output .= '<tr><td class="tblCommissionCol1"><strong>Gesamtprovisionen</strong></td><td class="tblCommissionCol2"><strong>' . number_format($gesamt, 2, ',','.')  . '&euro;</strong></td></tr>';
