@@ -357,6 +357,15 @@ function angelio_menu() {
 	);
 */
 
+    $items['syncshop/%'] = array(
+        'title' => 'Sync Shop',
+        'page callback' => 'angelio_sync_shop',
+        'page arguments' => array(1),
+        'access arguments' => array('administer site configuration'),
+        'type' => MENU_CALLBACK,
+    );
+    
+
     $items['join/%'] = array(
         'title' => 'Register',
         'page callback' => 'angelio_register',
@@ -2995,3 +3004,75 @@ global $user;
 
 }
 
+function angelio_sync_shop($uid) {
+    
+    $users = db_query("SELECT * FROM {users} WHERE uid=" . $uid)->fetchAll();
+
+    foreach ($users as $user) {
+        db_set_active('angelio_shop');
+    
+        
+        $sql = "INSERT INTO {users} (uid, name, pass, mail, theme, signature, signature_format, created, access, login, status, timezone, language, picture, init, data) 
+        VALUES (
+        " . $user->uid . ", 
+        '" . $user->name . "', 
+        '" . $user->pass . "', 
+        '" . $user->mail . "',  
+        '" . $user->theme . "', 
+        '" . $user->signature . "', 
+        '" . $user->signature_format . "', 
+        '" . $user->created . "', 
+        '" . $user->access . "', 
+        '" . $user->login . "', 
+        '" . $user->status . "', 
+        '" . $user->timezone . "', 
+        '" . $user->language . "', 
+        '" . $user->picture . "', 
+        '" . $user->init . "', 
+        '" . $user->data . "'
+        )";
+    
+        $success = db_query($sql);
+        
+        db_set_active();
+        if (!$success) {
+            drupal_set_message("Fehler beim Export von " . $uid, 'error');
+        } else {
+            drupal_set_message("Der Benutzer wurde im angelio Shop angelegt");
+        }
+            
+            
+        db_set_active('angelio_daten');
+        $sql = "SELECT * FROM {tbl_Kunden_Online} WHERE KundenID_online = " . $uid;
+        $liste = db_query($sql)->fetchAll();
+        db_set_active();
+    
+        db_set_active('angelio_shop');
+    
+        foreach($liste as $adresse){
+            $uid = $adresse->KundenID_online;
+            $first_name = $adresse->strVName_O;
+            $last_name = $adresse->strNName_O;
+            $phone = $adresse->strTelefon_O;
+            $company = '';
+            $street1 = $adresse->strAnschrift_O;
+            $street2 = '';
+            $city = $adresse->strOrt_O;
+            $zone = '0';
+            $postal_code = $adresse->strPLZ_O;
+            if ($adresse->strLand_O == 'AT') {$country = '40';}
+            if ($adresse->strLand_O == 'DE') {$country = '276';}  
+            $address_name = 'angelio';
+            $default_shipping = '1';
+            $default_billing= '1';
+            $created = time();
+            $modified  = time();
+            $sql = "INSERT INTO {uc_addresses} (uid,first_name,last_name,phone,company,street1,street2,city,zone,postal_code,country,address_name,default_shipping,default_billing,created,modified)";
+            $sql .= " VALUES ('$uid','$first_name','$last_name','$phone','$company','$street1','$street2','$city',$zone,'$postal_code',$country,'$address_name',$default_shipping,$default_billing,$created,$modified)";
+                
+            $success = db_query($sql);
+            db_set_active();
+        }  
+
+    }
+}
