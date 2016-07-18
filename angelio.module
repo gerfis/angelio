@@ -3006,12 +3006,19 @@ global $user;
 
 function angelio_sync_shop($uid) {
     
-    $users = db_query("SELECT * FROM {users} WHERE uid=" . $uid)->fetchAll();
+    if ($uid == 0) {
+        db_set_active('angelio_shop');
+        db_query("DELETE FROM {users} WHERE uid > 1")->execute();
+        db_query("DELETE FROM {uc_addresses}")->execute();
+        db_set_active();
+        $users = db_query("SELECT * FROM {users} WHERE uid>20")->fetchAll();
+    } else {
+        $users = db_query("SELECT * FROM {users} WHERE uid=" . $uid)->fetchAll();
+    }
 
     foreach ($users as $user) {
         db_set_active('angelio_shop');
-    
-        
+ 
         $sql = "INSERT INTO {users} (uid, name, pass, mail, theme, signature, signature_format, created, access, login, status, timezone, language, picture, init, data) 
         VALUES (
         " . $user->uid . ", 
@@ -3025,13 +3032,13 @@ function angelio_sync_shop($uid) {
         '" . $user->access . "', 
         '" . $user->login . "', 
         '" . $user->status . "', 
-        '" . $user->timezone . "', 
+        'Europe/Vienna', 
         '" . $user->language . "', 
         '" . $user->picture . "', 
         '" . $user->init . "', 
         '" . $user->data . "'
         )";
-    
+     
         $success = db_query($sql);
         
         db_set_active();
@@ -3073,6 +3080,9 @@ function angelio_sync_shop($uid) {
             $success = db_query($sql);
             db_set_active();
         }  
-
+        $tuCurl = curl_init(); 
+        curl_setopt($tuCurl, CURLOPT_URL, 'http://shop.angelio.at/member/activate/' . $user->uid); 
+        $tuData = curl_exec($tuCurl); 
+        curl_close($tuCurl); 
     }
 }
