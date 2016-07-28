@@ -213,12 +213,12 @@ Gläubiger-Identifikationsnummer: AT76ZZZ00000016804<br>
 	
 	$form['bank']['Zahlungsintervall_O'] = array(
 	  '#type' => 'select',
-	  '#title' => t('Zahlungsweise'),
+	  '#title' => t('Zahlungsweise / 25€ Monatsbeitrag'),
 	  '#required' => TRUE,
-	  '#options' => array('1'=>'jährlich 264€ (22€/Mon.)',
-	  					  '2'=>'halbjährlich 138€ (23€/Mon.)',
-	  					  '4'=>'quartalsweise 72€ (24€/Mon.)',
-	  					  '12'=>'monatlich 25€'), 
+	  '#options' => array('1'=>'jährlich',
+	  					  '2'=>'halbjährlich',
+	  					  '4'=>'quartalsweise',
+	  					  '12'=>'monatlich'), 
 	  '#weight' => 4,	
 	);
 
