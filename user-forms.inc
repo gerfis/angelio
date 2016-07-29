@@ -188,13 +188,20 @@ Sollten wir die Einverständniserklärung nicht innerhalb der gesetzlichen Künd
 	  '#weight' => 4,
 	);
 
+    $form['bank']['txtRechnungsadresse'] = array(
+      '#type' => 'textarea',
+      '#title' => t('Rechnungsadresse'),
+      '#description' => 'Bitte geben Sie hier den Namen und die Adresse des Rechnungs- bzw. Zahlungsempf&auml;ngers an, sofern er/sie nicht der Versicherte ist. (Z.B. bei Kindern oder Firmen.)',     
+      '#weight' => 2,       
+    );
+    
 	$form['bank']['strIban_O'] = array(
 	  '#type' => 'textfield',
 	  '#title' => t('IBAN'),
 	  '#required' => TRUE,
 	  '#element_validate' => array('angelio_iban_validate'),
 	  //'#default_value' => 'AT131490022010010999',
-	  '#weight' => 2,		
+	  '#weight' => 3,		
 	);
 	$form['bank']['strBic_O'] = array(
 	  '#type' => 'textfield',
@@ -208,7 +215,7 @@ A-4654 Bad Wimsbach-Neydharting<br>
 <br>
 Gläubiger-Identifikationsnummer: AT76ZZZ00000016804<br>
 (Creditor ID)<br></div>',	  
-	  '#weight' => 3,	
+	  '#weight' => 4,	
 	);		
 	
 	$form['bank']['Zahlungsintervall_O'] = array(
@@ -219,7 +226,7 @@ Gläubiger-Identifikationsnummer: AT76ZZZ00000016804<br>
 	  					  '2'=>'halbjährlich',
 	  					  '4'=>'quartalsweise',
 	  					  '12'=>'monatlich'), 
-	  '#weight' => 4,	
+	  '#weight' => 5,	
 	);
 
 	$form['bank']['Beitrag'] = array(
@@ -230,7 +237,7 @@ Ich kann/Wir können innerhalb von acht Wochen, beginnend mit dem Belastungsdatu
 meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 	  ',
 	  '#element_validate' => array('angelio_beitrag_validate'),
-	  '#weight' => 5,
+	  '#weight' => 6,
 	);
 	
 		
@@ -383,13 +390,21 @@ meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 	  '#weight' => 1,	
 	);
  */	
+ 
+    $form['bank']['txtRechnungsadresse'] = array(
+      '#type' => 'textarea',
+      '#title' => t('Rechnungsadresse'),
+      '#default_value' => $userdata['txtRechnungsadresse'],     
+      '#weight' => 2,       
+    );
+    
 	$form['bank']['strIban_O'] = array(
 	  '#type' => 'textfield',
 	  '#title' => t('IBAN'),
 	  '#required' => TRUE,
 	  '#element_validate' => array('angelio_iban_validate'),
 	  '#default_value' => $userdata['strIban_O'],	  
-	  '#weight' => 2,		
+	  '#weight' => 3,		
 	);
     
 	$form['bank']['strBic_O'] = array(
@@ -398,7 +413,7 @@ meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 	  '#required' => TRUE,	  
 	  '#element_validate' => array('angelio_bic_validate'),
 	  '#default_value' => $userdata['strBic_O'],	  
-	  '#weight' => 3,	
+	  '#weight' => 4,	
 	);		
 	$form['bank']['Zahlungsintervall_O'] = array(
 	  '#type' => 'select',
@@ -406,7 +421,7 @@ meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 	  '#required' => TRUE,
 	  '#options' => array('1'=>'jährlich','2'=>'halbjährlich','4'=>'quartalsweise','12'=>'monatlich'),	  
 	  '#default_value' => $userdata['Zahlungsintervall_O'],
-	  '#weight' => 4,	
+	  '#weight' => 5,	
 	);
 		
 	/*
@@ -529,6 +544,7 @@ function angelio_user_register_form_submit($form, &$form_state) {
 	$datGeburt_O = $datGeburt['year'] . '-' . $datGeburt['month'] . '-' . $datGeburt['day'];  
 	$strTelefon_O = $form_state['values']['strTelefon_O'];
 	$strMobil_O = '';
+	$txtRechnungsadresse = $form_state['values']['txtRechnungsadresse'];
 	$strBank_O = '';
 	$strBic_O = $form_state['values']['strBic_O'];
 	$strIban_O = $form_state['values']['strIban_O'];
@@ -558,6 +574,7 @@ function angelio_user_register_form_submit($form, &$form_state) {
 	'datGeburt_O' => $datGeburt_O,
 	'strTelefon_O' => $strTelefon_O,
 	'strMobil_O' => $strMobil_O,
+	'txtRechnungsadresse' => $txtRechnungsadresse,
 	'strBank_O' => $strBank_O,
 	'strBic_O' => $strBic_O,
 	'strIban_O' => $strIban_O,
@@ -643,6 +660,7 @@ function angelio_user_edit_form_submit($form, &$form_state) {
 	$datGeburt_O = $datGeburt['year'] . '-' . $datGeburt['month'] . '-' . $datGeburt['day'];  
 	$strTelefon_O = $form_state['values']['strTelefon_O'];
 	$strMobil_O = '';
+    $txtRechnungsadresse = $form_state['values']['txtRechnungsadresse'];
 	$strBank_O = '';
 	$strBic_O = $form_state['values']['strBic_O'];
 	$strIban_O = $form_state['values']['strIban_O'];
@@ -666,6 +684,7 @@ function angelio_user_edit_form_submit($form, &$form_state) {
 	'datGeburt_O' => $datGeburt_O,
 	'strTelefon_O' => $strTelefon_O,
 	'strMobil_O' => $strMobil_O,
+	'txtRechnungsadresse' => $txtRechnungsadresse,
 	'strBank_O' => $strBank_O,
 	'strBic_O' => $strBic_O,
 	'strIban_O' => $strIban_O,

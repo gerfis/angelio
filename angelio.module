@@ -253,6 +253,7 @@ function angelio_mail($key, &$message, $params) {
       $body .= "Geburtsdatum: ". $params['Geburtstag']. "\n";
       $body .= "Beruf: ". $params['Beruf']. "\n\n";
       
+      $body .= "Rechnungsadresse:\n". $params['Rechnungsadresse']. "\n";
       $body .= "IBAN: ". $params['IBAN']. "\n";
       $body .= "BIC: ". $params['BIC']. "\n";
       $body .= "Zahlungsintervall: ". $params['Zahlung']. " (1=Jahr, 2=Halbjahr, 4=Quartal, 12=Monat)\n\n";
@@ -277,6 +278,7 @@ function angelio_mail($key, &$message, $params) {
       $body .= "Geburtsdatum: ". $params['Geburtstag']. "\n";
       $body .= "Beruf: ". $params['Beruf']. "\n\n";
       
+      $body .= "Rechnungsadresse:\n". $params['Rechnungsadresse']. "\n";
       $body .= "IBAN: ". $params['IBAN']. "\n";
       $body .= "BIC: ". $params['BIC']. "\n";
       $body .= "Zahlungsintervall: ". $params['Zahlung']. " (1=Jahr, 2=Halbjahr, 4=Quartal, 12=Monat)\n\n";
@@ -946,6 +948,7 @@ function angelio_mail2upline($uid) {
             'Land' => $member->country,
             'Tel' => $member->phone,
             'Mail' => $member->email,
+            'Rechnungsadresse' => $member->rechnung,
             'IBAN' => $member->iban,
             'BIC' => $member->bic,
             'Zahlung' => $member->payment,
@@ -989,6 +992,7 @@ function angelio_mail2office($uid) {
             'Land' => $member->country,
             'Tel' => $member->phone,
             'Mail' => $member->email,
+            'Rechnungsadresse' => $member->rechnung,
             'IBAN' => $member->iban,
             'BIC' => $member->bic,
             'Zahlung' => $member->payment,
@@ -1093,6 +1097,7 @@ global $user;
 		$thisuser->country=$record->strLand_O;
 		$thisuser->phone=$record->strTelefon_O;
 		$thisuser->email=$record->strEmail_O;
+        $thisuser->rechnung=$record->txtRechnungsadresse;
 		$thisuser->iban=$record->strIban_O;
         $thisuser->bic=$record->strBic_O;
         $thisuser->payment=$record->Zahlungsintervall_O;
@@ -2182,8 +2187,9 @@ global $user;
 	
 	$output .= '<div style="font-size:11px">(<sup>*</sup>) Ausbezahlt werden Beträge erst nach der 14-tägigen Kündigungsfrist von neuen Mitgliedern und frühestens, wenn mindestens 30 Euro in Summe erreicht wurden.</div>';
 			
-	$output .= '<div style="font-size:11px">(<sup>**</sup>)  Startprovision: Sobald Du mindestens 3 Personen innerhalb von 30 Tagen nach Deinem Vereinsbeitritt geworben hast, tritt der Schnellstartbonus in Kraft.
-Technisch ist es uns aber nur möglich, 44 Euro anstatt die höhere Startprovision von 88 Euro anzuzeigen. Die Anhebung passiert erst nach der 30-tägigen Zeitspanne plus 14 Tage Kündigungsfrist!</div>';			
+	/* $output .= '<div style="font-size:11px">(<sup>**</sup>)  Startprovision: Sobald Du mindestens 3 Personen innerhalb von 30 Tagen nach Deinem Vereinsbeitritt geworben hast, tritt der Schnellstartbonus in Kraft.
+Technisch ist es uns aber nur möglich, 44 Euro anstatt die höhere Startprovision von 88 Euro anzuzeigen. Die Anhebung passiert erst nach der 30-tägigen Zeitspanne plus 14 Tage Kündigungsfrist!</div>';
+     * */ 			
 	return $output;		
 }
 
