@@ -190,7 +190,7 @@ Sollten wir die Einverständniserklärung nicht innerhalb der gesetzlichen Künd
 
     $form['bank']['txtRechnungsadresse'] = array(
       '#type' => 'textarea',
-      '#title' => t('Rechnungsadresse'),
+      '#title' => 'Rechnungs- und Auszahlungsempf&auml;nger', 
       '#description' => 'Bitte geben Sie hier den Namen und die Adresse des Rechnungs- bzw. Zahlungsempf&auml;ngers an, sofern er/sie nicht der Versicherte ist. (Z.B. bei Kindern oder Firmen.)',     
       '#weight' => 2,       
     );
