@@ -453,12 +453,12 @@ function angelio_username_validate($element, &$form_state) {
     form_error($element, t('Der Benutzername "%s" ist ung&uuml;ltig. Bitte keine Umlaute, Leerzeichen, Satzzeichen und Sonderzeichen verwenden.', array('%s'=>$username)));
   }
   
-  if (angelio_alias_exists($path)) {
+  if (angelio_alias_exists($username)) {
     form_error($element,'Dieser Benutzername kann aus technischen Gr&uuml;nden nicht verwendet werden. ' );  
   }
 }
 
-function angelio_alias_exists($username) {
+function angelio_alias_exists($path) {
     $internal_path = drupal_lookup_path('source', $path); // are you using a multilingual site? if so, don't forget language parameter.
     
     if (!$internal_path) {
