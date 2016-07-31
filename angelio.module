@@ -70,7 +70,7 @@ function angelio_goto($row,$q='') {
     module_invoke_all('exit', $url);
   }
  
-  $url = "http://www.angelio.at/" . $url . "/" . $q;
+  $url =  $url . "/" . $q;
   // Even though session_write_close() is registered as a shutdown function, we
   // need all session data written to the database before redirecting.
   session_write_close();
@@ -712,7 +712,9 @@ function angelio_block_info() {
   $blocks['angelio_footer_block'] = array(
     'info' => t('Angelio Footer'),
   );
-  
+  $blocks['angelio_sponsor_block'] = array(
+    'info' => t('Angelio Sponsor'),
+  );  
   return $blocks;
 }
 
@@ -726,6 +728,9 @@ function angelio_block_view($delta='') {
     case 'angelio_footer_block' :
       $block['content'] = angelio_footer_block_view();
       break;
+    case 'angelio_sponsor_block' :
+      $block['content'] = angelio_sponsor_block_view();
+      break;
   }
   
   return $block;
@@ -738,6 +743,37 @@ function angelio_footer_block_view() {
     return $output;
 }
 
+function angelio_sponsor_block_view() {
+    
+    $sponsor_name = '';
+    if (isset($_COOKIE['sponsor_name'])) {
+        $sponsor_name = $_COOKIE['sponsor_name']; 
+    } else if (isset($_SESSION['sponsor_name'])){
+        $sponsor_name = $_SESSION['sponsor_name'];
+    } 
+
+    if ($sponsor_name!='') {
+        $sponsor_description = '';
+        $sponsor = angelio_get_userobject($sponsor_name);
+          $user = user_load($sponsor->member_id);
+          if(isset($user->picture) && $user->picture != '') {
+            $sponsor_description = theme('image_style', array('style_name' => 'thumbnail', 'path' => $user->picture->uri));
+          }
+        
+        $sponsor_description .= '<div class="clearfix">' .  $sponsor->first_name . ' ' . $sponsor->last_name . ' (' . $sponsor->username . ')<br>' . $sponsor->email . '<br>' . $sponsor->phone . '</div>';
+
+/*        
+        $follow = array();
+        if ($links = follow_links_load($sponsor->member_id)) {
+            $follow = _follow_links_element($links,follow_networks_load($sponsor->member_id),'');
+            //$sponsor_description .= $follow;
+        }
+*/  
+    } else {
+        $sponsor_description = 'Informationen unter office@angelio.at!';
+    }
+    return $sponsor_description;        
+}
 function angelio_testmail_form($form,&$form_state) {
 	$form['vorname'] = array(
 		'#type' => 'textfield',
@@ -1969,16 +2005,18 @@ global $user;
 	$sql = "SELECT * FROM {tbl_stat_Kunden_Downlines} WHERE lngLevel > 0 AND sponsorID=" . $userdata->member_id;
 	
 	$result = db_query($sql);
-			
-	$output .= '<table id="tblCommissionEbenen"><tr><th class="tblCommissionCol1">Level</th><th class="tblCommissionCol2">Anzahl Mitglieder</th><th class="tblCommissionCol3">Laufende Provision</th><tr>';
+
+	$matrix=array(1,3,9,27,81,243,729,2187,6561,19683);
+				
+	$output .= '<table id="tblCommissionEbenen"><tr><th class="tblCommissionCol1">Level</th><th class="tblCommissionCol2">Mitglieder</th><th class="tblCommissionCol2">Maximal</th><th class="tblCommissionCol2">Prozent voll</th><th class="tblCommissionCol3">Provision</th><tr>';
 	while ($row = $result->fetchAssoc()) {
-		$output .= '<tr><td class="tblCommissionCol1">' . $row['lngLevel'] . '</td><td class="tblCommissionCol2">' . $row['intAnzahlKunden'] . '</td><td class="tblCommissionCol3">' . number_format((float)$row['dblLaufend'], 2, ',','.')  . '&euro;</td></tr>';
+		$output .= '<tr><td class="tblCommissionCol1">' . $row['lngLevel'] . '</td><td class="tblCommissionCol2">' . $row['intAnzahlKunden'] . '</td><td class="tblCommissionCol2">' . $matrix[$row['lngLevel']] . '</td><td class="tblCommissionCol2">' . round($row['intAnzahlKunden'] * 100 / $matrix[$row['lngLevel']], 2) . '%</td><td class="tblCommissionCol3">' . number_format((float)$row['dblLaufend'], 2, ',','.')  . '&euro;</td></tr>';
 	} 
 
 	$sql = "SELECT sum(intAnzahlKunden) as Kunden, sum(dblLaufend) AS Provision FROM {tbl_stat_Kunden_Downlines} WHERE lngLevel > 0 AND sponsorID=" . $userdata->member_id;
 	$row = db_query($sql)->fetchAssoc();
 	
-	$output .= '<tr><td class="tblCommissionCol1"><b>Summe:</b></td><td class="tblCommissionCol2"><b>' . $summe_kunden . '</b></td><td class="tblCommissionCol3"><b>' . number_format((float)$summe_provision, 2, ',','.')  . '&euro;</b></td></tr>'; 
+	$output .= '<tr><td class="tblCommissionCol1"><b>Summe:</b></td><td class="tblCommissionCol2"><b>' . $summe_kunden . '</b></td><td class="tblCommissionCol2"></td><td class="tblCommissionCol2"></td><td class="tblCommissionCol3"><b>' . number_format((float)$summe_provision, 2, ',','.')  . '&euro;</b></td></tr>'; 
 	$output .= '</table>'; 
 	
 	$output .= "<hr><br><h3>Entwicklung der Linien:</h3>";

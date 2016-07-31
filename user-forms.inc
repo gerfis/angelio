@@ -393,7 +393,7 @@ meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
  
     $form['bank']['txtRechnungsadresse'] = array(
       '#type' => 'textarea',
-      '#title' => t('Rechnungsadresse'),
+      '#title' => 'Rechnungs- und Auszahlungsempf&auml;nger',
       '#default_value' => $userdata['txtRechnungsadresse'],     
       '#weight' => 2,       
     );
@@ -447,12 +447,35 @@ function angelio_emailadresse_validate($element, &$form_state) {
 }
 
 function angelio_username_validate($element, &$form_state) {
-  $username = $element['#value']; 
+  $username = $element['#value'];
+   
   if(!angelio_validate_url($username)) {
     form_error($element, t('Der Benutzername "%s" ist ung&uuml;ltig. Bitte keine Umlaute, Leerzeichen, Satzzeichen und Sonderzeichen verwenden.', array('%s'=>$username)));
   }
+  
+  if (angelio_alias_exists($path)) {
+    form_error($element,'Dieser Benutzername kann aus technischen Gr&uuml;nden nicht verwendet werden. ' );  
+  }
 }
 
+function angelio_alias_exists($username) {
+    $internal_path = drupal_lookup_path('source', $path); // are you using a multilingual site? if so, don't forget language parameter.
+    
+    if (!$internal_path) {
+      // Nothing found in aliases, so "members" is not an alias. Check if it's handled by a menu hook (router item).
+      $menu_item = menu_get_item($path);
+      if (!$menu_item) {
+        return FALSE; // Hooray, we can use this as it's available.
+      }
+      else {
+        return TRUE; // Internal path is in use.
+      }
+    }
+    else {
+      // We found an internal path for the alias, so therefore we can't use this.
+      return TRUE;
+    }    
+}
 function angelio_sponsor_validate($element, &$form_state) {
   $sponsor = $element['#value']; 
   if(!angelio_check_sponsor($sponsor)) {
