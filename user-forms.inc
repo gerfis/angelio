@@ -476,6 +476,7 @@ function angelio_alias_exists($path) {
       return TRUE;
     }    
 }
+
 function angelio_sponsor_validate($element, &$form_state) {
   $sponsor = $element['#value']; 
   if(!angelio_check_sponsor($sponsor)) {
