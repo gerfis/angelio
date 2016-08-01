@@ -745,22 +745,21 @@ function angelio_footer_block_view() {
 
 function angelio_sponsor_block_view() {
     
-    $sponsor_name = '';
+    $sponsor_name = 'angelio';
     if (isset($_COOKIE['sponsor_name'])) {
         $sponsor_name = $_COOKIE['sponsor_name']; 
     } else if (isset($_SESSION['sponsor_name'])){
         $sponsor_name = $_SESSION['sponsor_name'];
     } 
 
-    if ($sponsor_name!='') {
-        $sponsor_description = '';
-        $sponsor = angelio_get_userobject($sponsor_name);
-          $user = user_load($sponsor->member_id);
-          if(isset($user->picture) && $user->picture != '') {
-            $sponsor_description = theme('image_style', array('style_name' => 'thumbnail', 'path' => $user->picture->uri));
-          }
-        
-        $sponsor_description .= '<div class="clearfix"><br><b>' .  $sponsor->first_name . ' ' . $sponsor->last_name . ' (' . $sponsor->username . ')</b><br><a href="mailto:' . $sponsor->email . '">' . $sponsor->email . '</a><br>' . $sponsor->phone . '</div>';
+    $sponsor_description = '';
+    $sponsor = angelio_get_userobject($sponsor_name);
+    $user = user_load($sponsor->member_id);
+    if(isset($user->picture) && $user->picture != '') {
+        $sponsor_description = theme('image_style', array('style_name' => 'thumbnail', 'path' => $user->picture->uri));
+    }
+    
+    $sponsor_description .= '<div class="clearfix"><br><b>' .  $sponsor->first_name . ' ' . $sponsor->last_name . ' (' . $sponsor->username . ')</b><br><a href="mailto:' . $sponsor->email . '">' . $sponsor->email . '</a><br>' . $sponsor->phone . '</div>';
 
 /*        
         $follow = array();
@@ -769,9 +768,7 @@ function angelio_sponsor_block_view() {
             //$sponsor_description .= $follow;
         }
 */  
-    } else {
-        $sponsor_description = 'Informationen unter office@angelio.at!';
-    }
+
     return $sponsor_description;        
 }
 function angelio_testmail_form($form,&$form_state) {
