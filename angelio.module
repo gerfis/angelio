@@ -3087,7 +3087,7 @@ global $user;
     $red = imagecolorallocate($img, 255, 0, 0);
     $green = imagecolorallocate($img, 0, 255, 0); 
     
-    imagefilledellipse($img, $u, $v, 12, 12, $green);
+    //imagefilledellipse($img, $u, $v, 12, 12, $green);
     for ($kreis = 1; $kreis <= 9; $kreis++) {
         for ($i = 1; $i <= $levels[$kreis]; $i++) {
             imagefilledellipse($img, $newx[$kreis][$i], $newy[$kreis][$i], 12, 12, $red);
