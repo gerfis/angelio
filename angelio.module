@@ -24,7 +24,7 @@ function angelio_boot() {
   
   if ($subdomain[0] != "www" && $subdomain[0] != "angelio") {
     $row = db_query('SELECT name FROM users WHERE UPPER(name) = UPPER(:name)', array(':name' => $subdomain[0]))->fetchObject();
-    if ($row) {
+    if ($row) { 
       if (isset($_GET['q']) && angelio_validate_url($_GET['q'])) {
         angelio_goto($row,$_GET['q']);
       } else {
@@ -666,6 +666,12 @@ function angelio_menu() {
     );
     
     
+    $items['mein-universum/%'] = array(
+        'title' => 'Mein Universum',
+        'page callback' => 'angelio_universum',
+        'page arguments' => array(1), 
+        'access arguments' => array('access own downline'),
+    );
     
  /*  
         $items['mein-angelio'] = array(
@@ -836,27 +842,6 @@ function angelio_theme() {
   return $items;
 }
 
-/*
-function angelio_theme() {
-  return array(
-     'user_register' => array(
-      'template' => 'user-register-form',
-      'arguments' => array('form' => NULL),
-   	), 
-   	'unfall_polizze' => array(
-      'template' => 'unfall-polizze',
-      'arguments' => array('userdata' => NULL),	
-	), 
-  'user_profile_form' => array(
-    'arguments' => array('form' => NULL),
-    'template' => 'user-profile-edit',
-    'render element' => 'form',
-    ),
-  );
-}
-
- * 
- */
 function angelio_register($uid) {
 	if (angelio_check_sponsor($uid)) {
 		if (arg(2) == "") {
@@ -1508,6 +1493,8 @@ global $user;
 	$output .= '<span class="status-white"> 2 </span><span class="level3 stufe3 BRONCE" style="padding-left:60px;">User 3 (id: 227) Vorname </span>: grauer: 3. Ebene (usw.)<br>';
 	$output .= '<span class="status-white"> 2 </span><span class="level4 stufe4 BRONCE" style="padding-left:80px;">User 4 (id: 227) Vorname </span>: dunkelgrauer: 4. Ebene (usw.)<br>';	
 	$output .= '<span class="status-white"> 2 </span><span class="level2 stufe2 eigen BRONCE" style="padding-left:40px;">User 5 (id: 230) Vorname </span>: eingerahmt: selber gesponsert<br>';
+    
+    $output .= '<p>&nbsp;</p><div id="universum"><img src="/mein-universum/' . $userdata->member_id . '"></div>';
 	
 	
 	return $output;
@@ -3040,6 +3027,76 @@ global $user;
     imagettftext($img, 27, 0, 700, 140, $text_color, $font, $datum);
     imagettftext($img, 27, 0, 950, 225, $text_color, $font, $betrag . ',-'); 
     imagettftext($img, 27, 0, 120, 280, $text_color, $font, "-- " . num2text(intval($betrag)) . " --"); 
+    imagepng($img);
+    imagedestroy($img);
+
+}
+
+function angelio_universum($uid) {
+global $user;
+
+    if($uid!='0') {
+        $userdata = angelio_get_userobject($uid);
+    } else {
+        $uid = $user->uid;
+        $userdata = angelio_get_userobject($uid);
+    }
+
+
+    $statistik = array();
+    $bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILVER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+    
+    $tree = angelio_downline_tree($statistik, $bonuslevels, $userdata->member_id, $userdata->member_id,1,true,9);
+    
+    $levels = array('1' => 0, '2' => 0, '3' => 0, '4' => 0, '5' => 0, '6' => 0, '7' => 0, '8' => 0, '9' => 0);
+    $winkel = array('1' => 0, '2' => 0, '3' => 0, '4' => 0, '5' => 0, '6' => 0, '7' => 0, '8' => 0, '9' => 0);
+    $r = array('1' => 73, '2' => 93, '3' => 113, '4' => 130, '5' => 175, '6' => 230, '7' => 290, '8' => 327, '9' => 365);
+    $gesamt = 0;
+    
+    foreach ($statistik as $level) {
+        $levels[$level['level']] = $levels[$level['level']] + $level['count'];  
+        $gesamt += $level['count']; 
+    }
+
+    for ($i = 1; $i < 10; $i++) {
+        if ($levels[$i] > 0) {
+            $winkel[$i] = intval(360 / $levels[$i]);
+        }
+    }
+    
+    $u = 385;
+    $v = 385;
+    
+    $newx = array();
+    $newy = array();
+
+    for ($kreis = 1; $kreis <= 9; $kreis++) {
+       for ($i = 1; $i <= $levels[$kreis]; $i++) {
+           $newx[$kreis][$i] = $u + round($r[$kreis] * sin(($winkel[$kreis]*$i+90)*M_PI/180),0);
+           $newy[$kreis][$i] = $v + round($r[$kreis] * cos(($winkel[$kreis]*$i+90)*M_PI/180),0);
+       }
+    } 
+
+    $universum = $_SERVER['DOCUMENT_ROOT'] . '/downloads/Universum-quadrat.png';
+     
+    $img = imagecreatefrompng($universum);  //--- open img file ---
+    
+    header ('Content-Type: image/png');
+    $font = $_SERVER['DOCUMENT_ROOT'] . '/downloads/segoesc.ttf';
+    $text_color = imagecolorallocate($img, 5, 57, 143);
+    $red = imagecolorallocate($img, 255, 0, 0);
+    $green = imagecolorallocate($img, 0, 255, 0); 
+    
+    imagefilledellipse($img, $u, $v, 12, 12, $green);
+    for ($kreis = 1; $kreis <= 9; $kreis++) {
+        for ($i = 1; $i <= $levels[$kreis]; $i++) {
+            imagefilledellipse($img, $newx[$kreis][$i], $newy[$kreis][$i], 12, 12, $red);
+        }
+    }
+    
+    $text = "Das Universum von " . $userdata->username .  " am " . date("d.m.Y");
+    imagettftext($img, 16, 0, 20, 40, $text_color, $font, $text);
+        
     imagepng($img);
     imagedestroy($img);
 
