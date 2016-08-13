@@ -724,8 +724,9 @@ function angelio_goto_shop() {
     } else if (isset($_SESSION['sponsor_name'])){
         $sponsor_name = $_SESSION['sponsor_name'];
     } 
-    print $sponsor_name;
+
     drupal_goto("http://shop.angelio.at/" . $sponsor_name);
+    
 }
 
 /**
