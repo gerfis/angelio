@@ -359,6 +359,13 @@ function angelio_menu() {
 	);
 */
 
+    $items['gotoshop'] = array(
+        'title' => 'Zum angelio Shop',
+        'page callback' => 'angelioshop_goto_shop',
+        'page arguments' => array(0), 
+        'access arguments' => array('access content'),
+    );
+
     $items['syncshop/%'] = array(
         'title' => 'Sync Shop',
         'page callback' => 'angelio_sync_shop',
@@ -709,6 +716,16 @@ function angelio_menu() {
 	return $items;
 }
 
+
+function angelio_goto_shop() {
+    $sponsor_name = '';
+    if (isset($_COOKIE['sponsor_name'])) {
+        $sponsor_name = $_COOKIE['sponsor_name']; 
+    } else if (isset($_SESSION['sponsor_name'])){
+        $sponsor_name = $_SESSION['sponsor_name'];
+    } 
+    drupal_goto("http://shop.angelio.at/" . $sponsor_name);
+}
 
 /**
  * Implements hook_block_info().
@@ -3069,7 +3086,7 @@ global $user;
     
     $newx = array();
     $newy = array();
-
+ 
     for ($kreis = 1; $kreis <= 9; $kreis++) {
        for ($i = 1; $i <= $levels[$kreis]; $i++) {
            $newx[$kreis][$i] = $u + round($r[$kreis] * sin(($winkel[$kreis]*$i+90)*M_PI/180),0);
@@ -3085,7 +3102,8 @@ global $user;
     $font = $_SERVER['DOCUMENT_ROOT'] . '/downloads/segoesc.ttf';
     $text_color = imagecolorallocate($img, 5, 57, 143);
     $red = imagecolorallocate($img, 255, 0, 0);
-    $green = imagecolorallocate($img, 0, 255, 0); 
+    //$angeliogelb = imagecolorallocate($img, 252, 197, 30);
+    //$green = imagecolorallocate($img, 0, 255, 0); 
     
     //imagefilledellipse($img, $u, $v, 12, 12, $green);
     for ($kreis = 1; $kreis <= 9; $kreis++) {
