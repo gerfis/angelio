@@ -361,7 +361,7 @@ function angelio_menu() {
 
     $items['gotoshop'] = array(
         'title' => 'Zum angelio Shop',
-        'page callback' => 'angelioshop_goto_shop',
+        'page callback' => 'angelio_goto_shop',
         'page arguments' => array(0), 
         'access arguments' => array('access content'),
     );
