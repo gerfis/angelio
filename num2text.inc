@@ -22,6 +22,7 @@ $numeral = array('null', 'ein', 'zwei', 'drei', 'vier',
                   'fünf~', 'sech~', 'sieb~', 'acht~', 'neun~');
 $tenner = array('', '', 'zwan~', 'dreißig', 'vier~',
                 'fünf~', 'sech~', 'sieb~', 'acht~', 'neun~');
+$res = '';
 
 $group_suffix[0][0] = '';
 $group_suffix[0][1] = '';
