@@ -2077,28 +2077,26 @@ global $user;
            
 	$output .= '<table id="tblCommissionMonate"><tr><th class="tblCommissionCol2">Bonusart</th><th class="tblCommissionCol3">Summe Provision</th><tr>';
 	while ($row = $result->fetchAssoc()) {
+	    /*
 	    if ($row['strBonusart'] == "Angelprovision") {$angel = true;}
 	    if ($angel && $row['strBonusart']!="Startprovision") {
 		  $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td></tr>';
 		  $gesamt = $gesamt + (float)$row['Summe'];
         } else if($row['strBonusart']=="Startprovision") {
-          $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '*</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe']*2, 2, ',','.')  . '&euro;</td></tr>';
-          $gesamt = $gesamt + (float)$row['Summe']*2;
+          $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe']*2, 2, ',','.')  . '&euro;</td></tr>';
+          $gesamt = $gesamt + (float)$row['Summe']; 
         } else if(!$angel) {
           $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td></tr>';
           $gesamt = $gesamt + (float)$row['Summe'];                        
         }
+        */
+        $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td></tr>';
+        $gesamt = $gesamt + (float)$row['Summe']; 
 	} 
 	$output .= '<tr><td class="tblCommissionCol1"><strong>Gesamtprovisionen</strong></td><td class="tblCommissionCol2"><strong>' . number_format($gesamt, 2, ',','.')  . '&euro;</strong></td></tr>';
 	$output .= '</table>';
-	if ($rookie) {
-	    $output .= "(*) zu erwartende Provision nach Ablauf der K&uuml;digungsfristen.";
-	}
-	
-    /*
-	$output .= '<br><div style="font-size:11px">(<sup>*</sup>)  Startprovision: Sobald Du mindestens 3 Personen innerhalb von 30 Tagen nach Deinem Vereinsbeitritt geworben hast, tritt der Schnellstartbonus in Kraft.
-Technisch ist es uns aber nur möglich, 44 Euro anstatt die höhere Startprovision von 88 Euro anzuzeigen. Die Anhebung passiert erst nach der 30-tägigen Zeitspanne inkl. Kündigungsfrist!</div>';
-     */
+
+	//$output .= '<br><div style="font-size:11px">(<sup>*</sup>)  Die Startprovision kann erst ausbezahlt werden, wenn der neue Partner innerhalb seiner 14 t&auml;gigen K&uuml;ndigungsfrist nicht k&uuml;ndigt.</div>';
 
 	db_set_active();	
 	return $output;
