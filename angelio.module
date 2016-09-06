@@ -1967,6 +1967,7 @@ global $user;
 
     $output = "";
 
+/*
     $date = new DateTime($userdata->created);
     $now = new DateTime();
     $tage = $date->diff($now)->format("%d");
@@ -1986,7 +1987,7 @@ global $user;
         db_set_active();
     }
     
-   
+*/   
 	drupal_set_title('Abrechnung von ' . $userdata->first_name);
 
 	$bonuslevel = $userdata->bonuslevel;
@@ -2080,7 +2081,7 @@ global $user;
 	    if ($angel && $row['strBonusart']!="Startprovision") {
 		  $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe'], 2, ',','.')  . '&euro;</td></tr>';
 		  $gesamt = $gesamt + (float)$row['Summe'];
-        } else if($rookie && $row['strBonusart']=="Startprovision") {
+        } else if($row['strBonusart']=="Startprovision") {
           $output .= '<tr><td class="tblCommissionCol1">' . $row['strBonusart'] . '*</td><td class="tblCommissionCol2">' . number_format((float)$row['Summe']*2, 2, ',','.')  . '&euro;</td></tr>';
           $gesamt = $gesamt + (float)$row['Summe']*2;
         } else if(!$angel) {
