@@ -764,7 +764,8 @@ function angelio_block_view($delta='') {
 function angelio_footer_block_view() {
     
     $result = db_query("Select count(uid) from {users}")->fetchCol();
-    $output = "Aktive Mitglieder: " . $result[0];
+    $anzahl = intval($result[0])- 1;
+    $output = "Aktive Mitglieder: " . $anzahl ;
     return $output;
 }
 
@@ -1495,15 +1496,13 @@ global $user;
 		}
 	}
 	$output .= "<p><b>" . t("Total") . ": ". $gesamt . "</b></p>";
-	
 	/*
 	$output .= "<h3>Bonuslevels:</h3>";
 	$output .= "BRONCE: " . $bonuslevels['BRONCE'] . "<br>";
 	$output .= "SILVER: " . $bonuslevels['SILVER'] . "<br>";
 	$output .= "GOLD: " . $bonuslevels['GOLD'] . "<br>";
 	$output .= "<br><hr><br>";
-	*/
-		
+    */
 	$output .= $tree;
 	
 	$output .= '<hr><h3>Legende:</h3>';
@@ -1606,7 +1605,8 @@ function angelio_downline_tree(&$statistik, &$bonuslevels, $uid, $sponsor_id, $l
 			$bonustitle = $levels[0]->title;
 			$bonuslevels[$bonustitle] = $bonuslevels[$bonustitle] + 1; 
 			db_set_active();
-			$output .= '<span class="status-' . $member_status . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . ' ' . $bonustitle . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name . '&nbsp;</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
+			//$output .= '<span class="status-' . $member_status . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . ' ' . $bonustitle . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name  . ' (' . substr($bonustitle,0,1) . ')&nbsp;</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
+            $output .= '<span class="status-' . $member_status . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . ' ' . $bonustitle . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name  . '&nbsp;</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
   		}
  		db_set_active();
 		
