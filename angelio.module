@@ -3327,7 +3327,7 @@ global $user;
     $upgrade = true;
     $bonusrolle = angelio_bonusrolle($userdata->bonuslevel);
     if ($userdata->bonuslevel < 3) {
-        $options = array('3' => 'GOLD: 24,90€/Monat Vollmitgliedschaft inkl. Backup, Unfallversicherung und Cashback');
+        $options = array('3' => 'GOLD: 24,90€/Monat Vollmitgliedschaft inkl. Online-Backup, Unfallversicherung und Cashback');
     } elseif ($userdata->bonuslevel == 5) 
     {
         $options = array('6' => 'RUBIN: 39,90€/Monat RUBIN Mitgliedschaft');
@@ -3366,15 +3366,16 @@ function angelio_upgrade_form_submit($form, &$form_state) {
     $uid = $form_state['values']['uid'];
     $bonuslevel = $form_state['values']['bonuslevel'];
     $bonustitle = angelio_bonusrolle($bonuslevel);
+    $payment = angelio_bonuspayment($bonuslevel);
     
     db_set_active('angelio_daten');
     db_update('tbl_Kunden_Online')
-        ->fields(array('bonuslevel' => $bonuslevel))
+        ->fields(array('bonuslevel' => $bonuslevel, 'dblMonthlyPayment' => $payment))
         ->condition('KundenID_online', $uid, '=')
         ->execute();
     db_set_active();
     
-    drupal_set_message("Ihre Mitgliedschaft wurde auf " . $bonustitle . " erhöht und ist nach der nächsten Monatsabrechnung aktiv.");
+    drupal_set_message("Deine Mitgliedschaft wurde auf " . $bonustitle . " erhöht und ist nach der nächsten Monatsabrechnung aktiv!");
     drupal_goto("user");
 }
 
