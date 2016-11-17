@@ -1,6 +1,5 @@
 <?php
 
-
 function angelio_form_alter(&$form, &$form_state, $form_id) {
 global $user;	
 // ******** user_register
@@ -218,15 +217,25 @@ Gläubiger-Identifikationsnummer: AT76ZZZ00000016804<br>
 	  '#weight' => 4,	
 	);		
 	
+    $form['bank']['bonuslevel'] = array(
+      '#type' => 'select',
+      '#title' => t('Mitgliedschaft'),
+      '#required' => TRUE,
+      '#options' => array('1'=>'BRONCE: 9,90€/Monat inkl. 10TB Online Backup',
+                          '2'=>'SILBER: 14,90€/Monat inkl. Private Unfallversicherung (PUV)',
+                          '3'=>'GOLD: 24,90€/Monat Vollmitgliedschaft mit Backup und PUV'), 
+      '#weight' => 5,   
+    );
+    
 	$form['bank']['Zahlungsintervall_O'] = array(
 	  '#type' => 'select',
-	  '#title' => t('Zahlungsweise / 25€ Monatsbeitrag'),
+	  '#title' => t('Zahlungsweise'),
 	  '#required' => TRUE,
 	  '#options' => array('1'=>'jährlich',
 	  					  '2'=>'halbjährlich',
 	  					  '4'=>'quartalsweise',
 	  					  '12'=>'monatlich'), 
-	  '#weight' => 5,	
+	  '#weight' => 6,	
 	);
 
 	$form['bank']['Beitrag'] = array(
@@ -237,7 +246,7 @@ Ich kann/Wir können innerhalb von acht Wochen, beginnend mit dem Belastungsdatu
 meinem/unserem Kreditinstitut vereinbarten Bedingungen.</span>
 	  ',
 	  '#element_validate' => array('angelio_beitrag_validate'),
-	  '#weight' => 6,
+	  '#weight' => 7,
 	);
 	
 		
@@ -575,6 +584,8 @@ function angelio_user_register_form_submit($form, &$form_state) {
 	//$ysnNewsletter_O = $form_state['values']['ysnNewsletter_O'];
 	$ysnNewsletter_O = '0';
 	$Polizzennummer_O = date("ym") . sprintf("%07d", $KundenID_online) . "0101";
+    $bonuslevel = $form_state['values']['bonuslevel'];
+    $monthlyPayment = angelio_bonuspayment($bonuslevel);
 	$Zahlungsintervall_O = $form_state['values']['Zahlungsintervall_O'];
 	$ysnInaktiv = 0;
 	$now = date("Y-m-d H:i:s", time());
@@ -604,10 +615,12 @@ function angelio_user_register_form_submit($form, &$form_state) {
 	'strIban_O' => $strIban_O,
 	'ysnNewsletter_O' => $ysnNewsletter_O,
 	'Polizzennummer_O' => $Polizzennummer_O,
+	'bonuslevel' => $bonuslevel,
 	'Zahlungsintervall_O' => $Zahlungsintervall_O,
 	'datAnlageInternet_O' => $now,
 	'datLastAbgleich_O' => $now,
-	'ysnInaktiv' => $ysnInaktiv
+	'ysnInaktiv' => $ysnInaktiv,
+	'dblMonthlyPayment' => $monthlyPayment,
 	))->execute();
   
   	db_set_active();
@@ -629,32 +642,26 @@ function angelio_user_register_form_submit($form, &$form_state) {
 		}
 		
 	    // Benutzer Rolle setzen
-		if ($role = user_role_load_by_name('BRONCE')) {
-			// Funktioniert einfach nicht...
-			  
+	    switch ($bonuslevel) {
+			case '1':
+				    $rolle = "BRONCE";
+				break;
+            case '2':
+                    $rolle = "SILBER";
+                break;
+            case '3':
+                    $rolle = "GOLD";
+                break;
+			default:
+				break;
+		}
+		if ($role = user_role_load_by_name($rolle)) {
 	        user_multiple_role_edit(array($member->member_id), 'add_role', $role->rid);
-
-	        /* auch nicht
-	        $user = user_load($member->member_id);
-			$user->roles = $user->roles + array($role->rid => $role->name);
-			user_save($user);
-			*/
-			
-			db_set_active('angelio_daten');
-			// Dem Member die host_id eintragen
-			db_update('tbl_Kunden_Online')
-				->fields(array('bonuslevel' => 2))
-				->condition('KundenID_online', $member->member_id, '=')
-				->execute();
-			db_set_active();
-			
-			drupal_set_message("Willkommen bei angelio!");
-	      }  
+      }  
 		
 		
 		$member = angelio_get_userobject($userinfo['uid']); // jetzt erst ist die Upline gesetzt!
-		angelio_mail2upline($userinfo['uid']);
-        
+  	    angelio_mail2upline($userinfo['uid']);
         
         // Benutzeradresse im Shop anlegen:
         angelio_sync_shop($member->member_id);
@@ -726,6 +733,7 @@ function angelio_user_edit_form_submit($form, &$form_state) {
 	else {
 		drupal_set_message("Der Benutzer wurde gespeichert.");
 	}
+    
     angelio_mail2office($KundenID_online);
 }
 ?>

@@ -2,7 +2,21 @@
 
 // watchdog("my_module", '<pre>' . print_r( $my_array_or_object, true) . '</pre>'); 
 
+function angelio_bonusrolle($level) {
+    db_set_active('angelio_daten');
+    $bonusrolle = db_query("SELECT title FROM {tblBonuslevels} WHERE bid=" . $level)->fetchCol();
+    db_set_active();
+        
+    return $bonusrolle[0];
+}
 
+function angelio_bonuspayment($level) {
+    db_set_active('angelio_daten');
+    $bonus = db_query("SELECT cost FROM {tblBonuslevels} WHERE bid=" . $level)->fetchCol();
+    db_set_active();
+        
+    return $bonus[0];
+}
 
 /**
  * Implements hook_boot(). Benutzernamen werden direkt nach dem Slash gelesen und umgeleitet.
@@ -122,6 +136,13 @@ function angelio_init() {
 	        drupal_goto('user');
 	    }
 	}
+
+  $subdomain = explode(".",$_SERVER['HTTP_HOST']);
+  if ($subdomain[0] == "dev" || $user->uid == "1") {
+      define("DEBUG",True);
+  } else {
+      define("DEBUG",False);
+  }
 
 /*
     global $base_path;
@@ -359,6 +380,23 @@ function angelio_menu() {
 	);
 */
 
+    $items['upgrade'] = array(
+        'title' => t('angelio Upgrade'),
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('angelio_upgrade_form',1),    
+        'access arguments' => array('access own downline'),
+        'type' => MENU_CALLBACK,
+    );
+
+
+    $items['upgrade/%'] = array(
+        'title' => t('angelio Upgrade'),
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('angelio_upgrade_form',1),    
+        'access arguments' => array('access all downlines'),
+        'type' => MENU_CALLBACK,
+    );
+
     $items['gotoshop'] = array(
         'title' => 'Zum angelio Shop',
         'page callback' => 'angelio_goto_shop',
@@ -584,6 +622,14 @@ function angelio_menu() {
         'type' => MENU_CALLBACK,
     );
 	
+    $items['backupok/%'] = array(
+        'title' => t('Backup aktivieren'),
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('angelio_backup_aktiviert_form',1),    
+        'access arguments' => array('access all downlines'),
+        'type' => MENU_CALLBACK,
+    );
+    
     $items['visitenkarten'] = array(
         'title' => 'Meine angelio Visitenkarten',
         'page callback' => 'angelio_visitenkarten',
@@ -766,6 +812,10 @@ function angelio_footer_block_view() {
     $result = db_query("Select count(uid) from {users}")->fetchCol();
     $anzahl = intval($result[0])- 1;
     $output = "Aktive Mitglieder: " . $anzahl ;
+    if (DEBUG) {
+        $output .= "<br>DEBUG!";
+    }
+
     return $output;
 }
 
@@ -966,81 +1016,87 @@ function angelio_user_presave(&$edit, $account, $category) {
 
 
 function angelio_mail2upline($uid) {
-		// E-Mail an Upline senden
+	// E-Mail an Upline senden
+    if (DEBUG) {
+        return;
+    }
+    		
+	$level = 1;
+	$member = angelio_get_userobject($uid);
+	$sponsor = angelio_get_userdata($member->sponsor_id);	
+	$UplineID_O = $member->upline_id;
+
+    $params = array(
+        'Receivername' => '',
+        'Uplinename' => $member->upline,
+        'Sponsorname' => $member->sponsor,
+        'Neuervname' => $member->first_name,
+        'Neuernname' => $member->last_name,
+        'Neueruser' => $member->username,
+        'Strasse' => $member->street,
+        'PLZ' => $member->postal,
+        'Ort' => $member->city,
+        'Land' => $member->country,
+        'Tel' => $member->phone,
+        'Mail' => $member->email,
+        'Rechnungsadresse' => $member->rechnung,
+        'IBAN' => $member->iban,
+        'BIC' => $member->bic,
+        'Zahlung' => $member->payment,
+        'Geburtstag' => $member->birthday,
+        'Beruf' => $member->job,
+        'Polizze' => $member->polizze,
+    );
+
+	// solange nicht oben angekommen und Level < 10: 
+	while ($UplineID_O > 0 && $level < 10) {
+
+		$upline = angelio_get_userdata($UplineID_O);
+		$UplineID_O = $upline['SponsorID_O'];
+        $params['Receivername'] = $upline['strVName_O'];
+                
+		$to = $upline['strEmail_O'];
+		$sent = drupal_mail('angelio', 'upline', $to, language_default(), $params, 'office@angelio.at');
 		
-		$level = 1;
-		$member = angelio_get_userobject($uid);
-		$sponsor = angelio_get_userdata($member->sponsor_id);	
-		$UplineID_O = $member->upline_id;
-
-        $params = array(
-            'Receivername' => '',
-            'Uplinename' => $member->upline,
-            'Sponsorname' => $member->sponsor,
-            'Neuervname' => $member->first_name,
-            'Neuernname' => $member->last_name,
-            'Neueruser' => $member->username,
-            'Strasse' => $member->street,
-            'PLZ' => $member->postal,
-            'Ort' => $member->city,
-            'Land' => $member->country,
-            'Tel' => $member->phone,
-            'Mail' => $member->email,
-            'Rechnungsadresse' => $member->rechnung,
-            'IBAN' => $member->iban,
-            'BIC' => $member->bic,
-            'Zahlung' => $member->payment,
-            'Geburtstag' => $member->birthday,
-            'Beruf' => $member->job,
-            'Polizze' => $member->polizze,
-        );
-
-		// solange nicht oben angekommen und Level < 10: 
-		while ($UplineID_O > 0 && $level < 10) {
-	
-			$upline = angelio_get_userdata($UplineID_O);
-			$UplineID_O = $upline['SponsorID_O'];
-            $params['Receivername'] = $upline['strVName_O'];
-                    
-			$to = $upline['strEmail_O'];
-			$sent = drupal_mail('angelio', 'upline', $to, language_default(), $params, 'office@angelio.at');
-			
-			$level++;
-		}
-			
-		$to = "office@angelio.at";
-		$sent = drupal_mail('angelio', 'neuer', $to, language_default(), $params, 'office@angelio.at');
+		$level++;
+	}
+		
+	$to = "office@angelio.at";
+	$sent = drupal_mail('angelio', 'neuer', $to, language_default(), $params, 'office@angelio.at');
 }
 
 function angelio_mail2office($uid) {
-        // E-Mail an Office senden
-        
-        $member = angelio_get_userobject($uid);
+    // E-Mail an Office senden
+    if (DEBUG) {
+        return;
+    }
+    
+    $member = angelio_get_userobject($uid);
 
-        $params = array(
-            'Receivername' => '',
-            'Uplinename' => $member->upline,
-            'Sponsorname' => $member->sponsor,
-            'Neuervname' => $member->first_name,
-            'Neuernname' => $member->last_name,
-            'Neueruser' => $member->username,
-            'Strasse' => $member->street,
-            'PLZ' => $member->postal,
-            'Ort' => $member->city,
-            'Land' => $member->country,
-            'Tel' => $member->phone,
-            'Mail' => $member->email,
-            'Rechnungsadresse' => $member->rechnung,
-            'IBAN' => $member->iban,
-            'BIC' => $member->bic,
-            'Zahlung' => $member->payment,
-            'Geburtstag' => $member->birthday,
-            'Beruf' => $member->job,
-            'Polizze' => $member->polizze,
-        );
-            
-        $to = "office@angelio.at";
-        $sent = drupal_mail('angelio', 'edit', $to, language_default(), $params, 'office@angelio.at');
+    $params = array(
+        'Receivername' => '',
+        'Uplinename' => $member->upline,
+        'Sponsorname' => $member->sponsor,
+        'Neuervname' => $member->first_name,
+        'Neuernname' => $member->last_name,
+        'Neueruser' => $member->username,
+        'Strasse' => $member->street,
+        'PLZ' => $member->postal,
+        'Ort' => $member->city,
+        'Land' => $member->country,
+        'Tel' => $member->phone,
+        'Mail' => $member->email,
+        'Rechnungsadresse' => $member->rechnung,
+        'IBAN' => $member->iban,
+        'BIC' => $member->bic,
+        'Zahlung' => $member->payment,
+        'Geburtstag' => $member->birthday,
+        'Beruf' => $member->job,
+        'Polizze' => $member->polizze,
+    );
+        
+    $to = "office@angelio.at";
+    $sent = drupal_mail('angelio', 'edit', $to, language_default(), $params, 'office@angelio.at');
 }
 
 
@@ -1333,9 +1389,9 @@ global $user;
 	$sql = "SELECT KundenID_online, strUsername_O, strVName_O, strNName_O, strEmail_O, strTelefon_O, ysnInaktiv FROM tbl_Kunden_Online WHERE ReferrerID_O=" . $userdata->member_id;
 	$result = db_query($sql);
 	
-	$output .= "<hr><h3>Frontlines</h3>";
+	$output .= "<hr><h3>Deine selber gesponserten Partner</h3>";
 	if ($result) {
-  		$output .= '<p>Anzahl Frontlines: ' . $result->rowCount() . "</p>";
+  		$output .= '<p>Anzahl selber gesponserter Partner: ' . $result->rowCount() . "</p>";
 	} else {
 		db_set_active();
 		return $output . '<p>Sie haben noch keine Downline...</p>';
@@ -1359,7 +1415,7 @@ global $user;
 	$output .= "<hr><h3>Struktur</h3>";	
 		
 	$statistik = array();
-	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILVER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILBER'=>0, 'GOLD'=>0,'PLATIN'=>0);
 	
 	$tree = angelio_downline_tree($statistik, $bonuslevels, $userdata->member_id, $userdata->member_id,1,false,9);
 	
@@ -1379,7 +1435,7 @@ global $user;
 
 	$output .= "<h3>Bonuslevels:</h3>";	
 	$output .= "BRONCE: " . $bonuslevels['BRONCE'] . "<br>";
-	$output .= "SILVER: " . $bonuslevels['SILVER'] . "<br>";
+	$output .= "SILBER: " . $bonuslevels['SILBER'] . "<br>";
 	$output .= "GOLD: " . $bonuslevels['GOLD'] . "<br>";
 	$output .= "<br><hr><br>";
 	*/
@@ -1425,7 +1481,7 @@ global $user;
 	
 	$sql = "SELECT KundenID_online, strUsername_O, strVName_O, strNName_O, strEmail_O, strTelefon_O, ysnInaktiv FROM {tbl_Kunden_Online} WHERE KundenID_online=" . $userdata->upline_id;
 	$row = db_query($sql)->fetchAssoc();  	
-	$output .= "<hr><h3>Deine 3x9 Matrix Upline</h3>";
+	$output .= "<hr><h3>Deine Uplines</h3>";
 	$output .= '<table class="tblDownline"><tr><th class="tblDownlineUName">Benutzername</th><th class="tblDownlineVName">Vorname</th><th class="tblDownlineNName">Nachname</th><th class="strEmail_O">E-Mail</th><th class="strTelefon_O">Telefon</th><th class="strTelefon_O">Aktiv</th><tr>';
 	$aktiv = ($row['ysnInaktiv'] == 0) ? 'Ja' : 'Nein';
 	if (user_access('access all downlines')) {
@@ -1438,7 +1494,7 @@ global $user;
 	$sql = "SELECT KundenID_online, strUsername_O, strVName_O, strNName_O, strEmail_O, strTelefon_O, ysnInaktiv FROM tbl_Kunden_Online WHERE SponsorID_O=" . $userdata->member_id;
 	$result = db_query($sql);
 	
-	$output .= "<hr><h3>Frontlines</h3>";
+	$output .= "<hr><h3>Deine Frontlines</h3>";
 	if ($result) {
   		$output .= '<p>Anzahl Frontlines: ' . $result->rowCount() . "</p>";
 	} else {
@@ -1460,9 +1516,7 @@ global $user;
 	
 	db_set_active();
 
-	$output .= "<hr><h3>Struktur</h3>";	
-	
-		// Bis zu welcher Tiefe bekommt der Empfänger den Bonus?
+// Bis zu welcher Tiefe bekommt der Empfänger den Bonus?
 	db_set_active('angelio_daten');
 	$sql = "SELECT title, depth FROM tbl_Kunden_Online m, tblBonuslevels b WHERE m.bonuslevel = b.bid AND m.KundenID_online='" . $userdata->member_id . "'";
 	$levels = db_query($sql)->fetchAll();
@@ -1471,12 +1525,11 @@ global $user;
 	db_set_active();
 	
 	$statistik = array();
-	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILVER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILBER'=>0, 'GOLD'=>0,'PLATIN'=>0);
 	
 	
-	$output .= "<h3>Bonuslevel: " . $title . "</h3>";
-	$output .= "<h3>" . t("Paylevels: ") . $depth . "</h3>";
-
+	$output .= "<hr><h3>Mitgliedschaft: " . $title . " <a href='/upgrade'>(Hier upgraden)</a></h3>";
+	$output .= "<h3>Beteiligung bis Ebene: " . $depth . "</h3>";
 
 	$tree = angelio_downline_tree($statistik, $bonuslevels, $userdata->member_id, $userdata->member_id,1,true,$depth);
 	
@@ -1496,22 +1549,24 @@ global $user;
 		}
 	}
 	$output .= "<p><b>" . t("Total") . ": ". $gesamt . "</b></p>";
-	/*
-	$output .= "<h3>Bonuslevels:</h3>";
-	$output .= "BRONCE: " . $bonuslevels['BRONCE'] . "<br>";
-	$output .= "SILVER: " . $bonuslevels['SILVER'] . "<br>";
-	$output .= "GOLD: " . $bonuslevels['GOLD'] . "<br>";
-	$output .= "<br><hr><br>";
-    */
+	
+	$output .= "<h3>Partnerlevels:</h3>";
+    $output .= "<table>";
+	$output .= "<tr><td>BRONCE: </td><td>" . $bonuslevels['BRONCE'] . "</td></tr>";
+	$output .= "<tr><td>SILBER: </td><td>" . $bonuslevels['SILBER'] . "</td></tr>";
+	$output .= "<tr><td>GOLD: </td><td>" . $bonuslevels['GOLD'] . "</td></tr>";
+    $output .= "<tr><td>PLATIN: </td><td>" . $bonuslevels['PLATIN'] . "</td></tr>";
+	$output .= "</table><hr><br>";
+
 	$output .= $tree;
 	
 	$output .= '<hr><h3>Legende:</h3>';
-	$output .= '<span class="status-white"> 1 </span><span class="level1 stufe2 BRONCE" style="padding-left:20px;">User 1 (id: 210) Vorname </span>: gelb: Frontline<br>';
-	$output .= '<span class="status-white"> 2 </span><span class="level2 stufe2 BRONCE" style="padding-left:40px;">User 2 (id: 214) Vorname </span>: hellgrau: 2. Ebene<br>';
-	$output .= '<span class="status-white"> 2 </span><span class="level3 stufe3 BRONCE" style="padding-left:60px;">User 3 (id: 227) Vorname </span>: grauer: 3. Ebene (usw.)<br>';
-	$output .= '<span class="status-white"> 2 </span><span class="level4 stufe4 BRONCE" style="padding-left:80px;">User 4 (id: 227) Vorname </span>: dunkelgrauer: 4. Ebene (usw.)<br>';	
+	$output .= '<span class="status-white"> 1 </span><span class="level1 stufe2 BRONCE" style="padding-left:20px;">User 1 (id: 210) Vorname (B)</span>: gelb: Frontline<br>';
+	$output .= '<span class="status-white"> 2 </span><span class="level2 stufe2 BRONCE" style="padding-left:40px;">User 2 (id: 214) Vorname (S)</span>: hellgrau: 2. Ebene<br>';
+	$output .= '<span class="status-white"> 2 </span><span class="level3 stufe3 BRONCE" style="padding-left:60px;">User 3 (id: 227) Vorname (G)</span>: grauer: 3. Ebene (usw.)<br>';
+	$output .= '<span class="status-white"> 2 </span><span class="level4 stufe4 BRONCE" style="padding-left:80px;">User 4 (id: 227) Vorname (P)</span>: dunkelgrauer: 4. Ebene (usw.)<br>';	
 	$output .= '<span class="status-white"> 2 </span><span class="level2 stufe2 eigen BRONCE" style="padding-left:40px;">User 5 (id: 230) Vorname </span>: eingerahmt: selber gesponsert<br>';
-    
+    $output .= '<br>(B): BRONCE, (S): SILBER, (G): GOLD, (P): PLATIN<br>';
     $output .= '<p>&nbsp;</p><div id="universum"><img src="/mein-universum/' . $userdata->member_id . '"></div>';
 	
 	
@@ -1541,7 +1596,7 @@ global $user;
 	db_set_active();
 	
 	$statistik = array();
-	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILVER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILBER'=>0, 'GOLD'=>0,'PLATIN'=>0);
 	
 	$tree = angelio_downline_tree($statistik, $bonuslevels, $userdata->member_id, $userdata->member_id,1,true,1000);
 		
@@ -1605,8 +1660,8 @@ function angelio_downline_tree(&$statistik, &$bonuslevels, $uid, $sponsor_id, $l
 			$bonustitle = $levels[0]->title;
 			$bonuslevels[$bonustitle] = $bonuslevels[$bonustitle] + 1; 
 			db_set_active();
-			//$output .= '<span class="status-' . $member_status . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . ' ' . $bonustitle . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name  . ' (' . substr($bonustitle,0,1) . ')&nbsp;</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
-            $output .= '<span class="status-' . $member_status . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . ' ' . $bonustitle . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name  . '&nbsp;</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
+			$output .= '<span class="status-' . $member_status . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . ' ' . $bonustitle . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name  . ' (' . substr($bonustitle,0,1) . ')&nbsp;</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
+            // $output .= '<span class="status-' . $member_status . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . ' ' . $bonustitle . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name  . '&nbsp;</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
   		}
  		db_set_active();
 		
@@ -1812,12 +1867,14 @@ function new_TestMember($sponsor_id, $datum) {
 		$datAnlage = $datum . " 00:00:00";
 	}
 	
+	$bonuslevel = rand(1,3);
+	
 	db_insert('tbl_Kunden_Online')
 	->fields(array('KundenID_online','ReferrerID_O','bonuslevel','strUsername_O','strVName_O','strNName_O','strEmail_O','datAnlageInternet_O','ysnIsTest','Polizzennummer_O','Zahlungsintervall_O'))
 	->values(array(
 		'KundenID_online' => $member_id,
 		'ReferrerID_O' => $sponsor_id,
-		'bonuslevel' => 2,
+		'bonuslevel' => $bonuslevel,
 		'strUsername_O' => $username,
 		'strVName_O' => $vorname[0],
 		'strNName_O' => $nachname[0],
@@ -1849,7 +1906,7 @@ function new_TestMember($sponsor_id, $datum) {
 	}
 
 	$statistik = array();
-	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILVER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILBER'=>0, 'GOLD'=>0,'PLATIN'=>0);
 	$output = angelio_downline_tree($statistik, $bonuslevels, 1, 1,1,true,9);
 	
 	return $output;
@@ -1865,48 +1922,54 @@ global $user;
 		$userdata = angelio_get_userdata($uid);
 	}
 
-	drupal_set_title('Verträge von ' . $userdata['strVName_O']);
-	
-	db_set_active('angelio_daten');
-	
-	$output = "<hr><br><h3>Meine Vertr&auml;ge:</h3>";	
-	
-	$sql = "SELECT * FROM {tbl_Vertraege_online} vt LEFT JOIN {tbl_Produkte_Online} pr ON vt.ProduktID=pr.ProduktID WHERE ysnStorniert='0' AND KundenID=" . $uid;
-	$result = db_query($sql);	
+    if ($userdata['bonuslevel'] == 1) {
+        $output = "<p>Du bist Level <b>BRONCE</b> und hast keine Unfallversicherung. <br><br>Du kannst aber jederzeit <a href='/upgrade'><b>auf GOLD upgraden</b></a>!</p>";
+        $output .= "<p>Im Level GOLD bekommst du Provisionen bis zur 7. Ebene und für jeden Deiner Partner, der mit GOLD einsteigt, oder auf GOLD upgradet, <b>50€ Bonus</b>!";
+        $output .= "<p><form id='schadenbutton' action='/upgrade'><input type='submit' title='Jetzt Upgraden...' value='Jetzt Upgraden...'></form></p>";
+    } else {
 
-	if ($result->rowCount()) {
-  		$output .= '<table id="tblCommissionVertraege"><tr><th class="tblCommissionCol1">Produkt</th><th class="tblCommissionCol2">Versicherungsbestätigung</th><th class="tblCommissionCol3">Abschluss</th><th class="tblCommissionCol4">Vertrag</th><tr>';
-		while ($row = $result->fetchAssoc()) {
-			// wurde die Polizze schon erweitert?
-			$sql = "SELECT * FROM {tbl_Vertraege_Status} WHERE Polizzennummer='" . $row['Polizzennummer'] . "' AND datErweitert<>'0'";
-			$erweitert = db_query($sql)->fetchAssoc();			
-			if (!is_null($erweitert['Polizzennummer'])) {
-			$output .= '<tr><td valign="top" class="tblVertraegeCol">' . $row['strProduktbezeichnung'] . '</td><td valign="top" class="tblVertraegeCol"><a href="/polizze/' . $uid . '/' . $row['Polizzennummer'] . '">' . $row['Polizzennummer'] . '</a></td><td valign="top" class="tblVertraegeCol">' . fdate($row["datAbschluss"],"d") . '.' . fdate($row["datAbschluss"],"m") . '.' . fdate($row["datAbschluss"],"Y") . '</td><td><form class="vertrag kuendigen" title="Den Vertrag kündigen..." action="/kuendigen/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" value="kündigen..."></form></td></tr>';
-			} else {
-			$output .= '<tr><td valign="top" class="tblVertraegeCol">' . $row['strProduktbezeichnung'] . '</td><td valign="top" class="tblVertraegeCol"><a href="/polizze/' . $uid . '/' . $row['Polizzennummer'] . '">' . $row['Polizzennummer'] . '</a></td><td valign="top" class="tblVertraegeCol">' . fdate($row["datAbschluss"],"d") . '.' . fdate($row["datAbschluss"],"m") . '.' . fdate($row["datAbschluss"],"Y") . '</td><td><form class="vertrag kuendigen" title="Den Vertrag kündigen..." action="/kuendigen/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" value="kündigen..."></form><form class="vertrag erweitern" action="/erweitern/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" title="Den Vertrag erweitern..." value="erweitern..."></form></td></tr>';				
-			}
-		}
-		$output .= '</table>';
-	} else {
-		// $output .= 'Ihre Verträge werden erst generiert und sollten innerhalb von 48 Stunden sichtbar sein.';
-		$output .= '<br><a href="/polizze/' . $uid . '/' . $userdata['Polizzennummer_O'] . '">SOFORTPOLIZZE HIER DRUCKEN...</a>';
-		$output .= '<br>Die dauerhafte Polizze wird in spätestens 48 Stunden hier in Deinem Account erscheinen.';
-	}
-	
-	db_set_active();
-			
-	$output .= "<hr><br><h3>Meine Dokumente:</h3>";
-	$output .= "<table><tr><td class='tblVertraegeCol'>";	
-	$output .= "<a href='/downloads/AIG_AUVB_2005_extern.pdf' target='_blank'>AIG Allg. Unfallversicherungsbedingungen (AUVB 2005)</a><br>"; 
-	$output .= "<a href='/downloads/AIG_Progressionstabelle.pdf' target='_blank'>AIG Progressionstabelle</a><br>";
-	$output .= "<a href='/downloads/Datenschutzrichtlinie.pdf' target='_blank'>Datenschutzrichtlinie</a><br>";
-	$output .= "<a href='/downloads/Widerrufsbelehrung.pdf' target='_blank'>Widerrufsbelehrung</a><br>";
-	$output .= "<a href='/downloads/AGBangelio.pdf' target='_blank'>Allgemeine Bedingungen der Mitgliederwerbung</a><br>";
-		
-	$output .= "</td><td align='right'>";
-	$output .= "<form id='schadenbutton' action='/schaden'><input type='submit' title='Einen Unfall melden...' value='Einen Unfall melden...'></form>";
-	$output .= "</td></tr></table>";	
-	
+    	drupal_set_title('Verträge von ' . $userdata['strVName_O']);
+    	
+    	db_set_active('angelio_daten');
+    	
+    	$output = "<hr><br><h3>Meine Vertr&auml;ge:</h3>";	
+    	
+    	$sql = "SELECT * FROM {tbl_Vertraege_online} vt LEFT JOIN {tbl_Produkte_Online} pr ON vt.ProduktID=pr.ProduktID WHERE ysnStorniert='0' AND KundenID=" . $uid;
+    	$result = db_query($sql);	
+    
+    	if ($result->rowCount()) {
+      		$output .= '<table id="tblCommissionVertraege"><tr><th class="tblCommissionCol1">Produkt</th><th class="tblCommissionCol2">Versicherungsbestätigung</th><th class="tblCommissionCol3">Abschluss</th><th class="tblCommissionCol4">Vertrag</th><tr>';
+    		while ($row = $result->fetchAssoc()) {
+    			// wurde die Polizze schon erweitert?
+    			$sql = "SELECT * FROM {tbl_Vertraege_Status} WHERE Polizzennummer='" . $row['Polizzennummer'] . "' AND datErweitert<>'0'";
+    			$erweitert = db_query($sql)->fetchAssoc();			
+    			if (!is_null($erweitert['Polizzennummer'])) {
+    			$output .= '<tr><td valign="top" class="tblVertraegeCol">' . $row['strProduktbezeichnung'] . '</td><td valign="top" class="tblVertraegeCol"><a href="/polizze/' . $uid . '/' . $row['Polizzennummer'] . '">' . $row['Polizzennummer'] . '</a></td><td valign="top" class="tblVertraegeCol">' . fdate($row["datAbschluss"],"d") . '.' . fdate($row["datAbschluss"],"m") . '.' . fdate($row["datAbschluss"],"Y") . '</td><td><form class="vertrag kuendigen" title="Den Vertrag kündigen..." action="/kuendigen/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" value="kündigen..."></form></td></tr>';
+    			} else {
+    			$output .= '<tr><td valign="top" class="tblVertraegeCol">' . $row['strProduktbezeichnung'] . '</td><td valign="top" class="tblVertraegeCol"><a href="/polizze/' . $uid . '/' . $row['Polizzennummer'] . '">' . $row['Polizzennummer'] . '</a></td><td valign="top" class="tblVertraegeCol">' . fdate($row["datAbschluss"],"d") . '.' . fdate($row["datAbschluss"],"m") . '.' . fdate($row["datAbschluss"],"Y") . '</td><td><form class="vertrag kuendigen" title="Den Vertrag kündigen..." action="/kuendigen/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" value="kündigen..."></form><form class="vertrag erweitern" action="/erweitern/' . $row['Polizzennummer'] . '" method="post"><input type="hidden" value="' . $row['Polizzennummer'] . '"><input type="submit" title="Den Vertrag erweitern..." value="erweitern..."></form></td></tr>';				
+    			}
+    		}
+    		$output .= '</table>';
+    	} else {
+    		// $output .= 'Ihre Verträge werden erst generiert und sollten innerhalb von 48 Stunden sichtbar sein.';
+    		$output .= '<br><a href="/polizze/' . $uid . '/' . $userdata['Polizzennummer_O'] . '">SOFORTPOLIZZE HIER DRUCKEN...</a>';
+    		$output .= '<br>Die dauerhafte Polizze wird in spätestens 48 Stunden hier in Deinem Account erscheinen.';
+    	}
+    	
+    	db_set_active();
+    			
+    	$output .= "<hr><br><h3>Meine Dokumente:</h3>";
+    	$output .= "<table><tr><td class='tblVertraegeCol'>";	
+    	$output .= "<a href='/downloads/AIG_AUVB_2005_extern.pdf' target='_blank'>AIG Allg. Unfallversicherungsbedingungen (AUVB 2005)</a><br>"; 
+    	$output .= "<a href='/downloads/AIG_Progressionstabelle.pdf' target='_blank'>AIG Progressionstabelle</a><br>";
+    	$output .= "<a href='/downloads/Datenschutzrichtlinie.pdf' target='_blank'>Datenschutzrichtlinie</a><br>";
+    	$output .= "<a href='/downloads/Widerrufsbelehrung.pdf' target='_blank'>Widerrufsbelehrung</a><br>";
+    	$output .= "<a href='/downloads/AGBangelio.pdf' target='_blank'>Allgemeine Bedingungen der Mitgliederwerbung</a><br>";
+    		
+    	$output .= "</td><td align='right'>";
+    	$output .= "<form id='schadenbutton' action='/schaden'><input type='submit' title='Einen Unfall melden...' value='Einen Unfall melden...'></form>";
+    	$output .= "</td></tr></table>";	
+    }
 	return $output; 
 }
  
@@ -2661,33 +2724,40 @@ global $user;
 		$userdata = angelio_get_userobject($uid);
 	}
 	
-	db_set_active('angelio_daten');
-	$sql = "SELECT * FROM {tbl_Backup} WHERE KundenID_online=" . $uid;
-	$result = db_query($sql)->fetchAssoc();
-	db_set_active();	
-	if ($result) {
-		$output = "<p>Dein Backup Manger Zugang ist: <b><a href='http://" . $result['Subdomain'] . ".konsole.backup-manager.eu' target='_blank'>http://" . $result['Subdomain'] . ".konsole.backup-manager.eu</a></b></p>";
-		$output .= "<p>Dein Backup Manager Benutzername ist: " . $result['Email'] ."</p>";
-        $output .= "<p>Das Passwort f&uuml;r den Backup Manager haben wir dir per E-Mail zugesandt.<br>Wenn du es vergessen hast, wende dich bitte an unseren <a href='/support'>Support</a>.</p>";
-        
-		if ($result['aktiv']) {
-			$output .= "<p>Dein Zugang ist aktiv.</p>";
-		} else {
-			$output .= "Dein Zugang ist noch nicht aktiviert. Bitte habe noch etwas Geduld, du wirst per E-Mail informiert, sobald dein Backup-Manager eingerichtet ist.<p>&nbsp;</p>";
-		} 
-	} else {
-		$output = "Bitte w&auml;hle hier deinen gew&uuml;nschten Zugangsnamen und eine E-Mail Adresse f&uuml;r den Backup Manager.<br><br>";
-		$output .= "Dein Zugang wird dann so aussehen: <u>http://<b>" . $userdata->username . "</b>.konsole.backup-manager.eu</u><br><br>"; 
-		$output .= "Der Einfachheit halber, haben wir die Felder schon mit deinem angelio Benutzernamen und deiner E-Mail Adresse ausgef&uuml;llt,<br>du kannst aber ganz andere Eintr&auml;ge w&auml;hlen!<br><br>";
-		$output .= "Bitte beachte, dass der Name schon vergeben sein kann. Wir h&auml;ngen dann ein paar Zahlen daran.<br>";
-		$output .= "Sobald du deinen Namen aktiviert hast, legen wir deinen Backup Manager an. Das kann 2-3 Werktage dauern.<br>";
-		$output .= "Wir informieren dich per E-Mail, wenn der Zugang eingerichtet ist!";
-		$form = drupal_get_form('angelio_backup_form',$uid);
-		//$form['userid']['value'] = $uid;
-		$output .= drupal_render($form);
+    if ($userdata->bonuslevel == 2) {
+        $output = "<p>Du bist Level <b>BRONCE</b> und hast kein Backup. <br><br>Du kannst aber jederzeit <a href='/upgrade'><b>auf GOLD upgraden</b></a>!</p>";
+        $output .= "<p>Im Level GOLD bekommst du Provisionen bis zur 7. Ebene und für jeden Deiner Partner, der mit GOLD einsteigt, oder auf GOLD upgradet, <b>50€ Bonus</b>!";
+        $output .= "<p><form id='schadenbutton' action='/upgrade'><input type='submit' title='Jetzt Upgraden...' value='Jetzt Upgraden...'></form></p>";
         $output .= "<p>&nbsp;</p>";
-	}	
-	
+    } else {
+            
+    	db_set_active('angelio_daten');
+    	$sql = "SELECT * FROM {tbl_Backup} WHERE KundenID_online=" . $uid;
+    	$result = db_query($sql)->fetchAssoc();
+    	db_set_active();	
+    	if ($result) {
+    		$output = "<p>Dein Backup Manger Zugang ist: <b><a href='http://" . $result['Subdomain'] . ".konsole.backup-manager.eu' target='_blank'>http://" . $result['Subdomain'] . ".konsole.backup-manager.eu</a></b></p>";
+    		$output .= "<p>Dein Backup Manager Benutzername ist: " . $result['Email'] ."</p>";
+            $output .= "<p>Das Passwort f&uuml;r den Backup Manager haben wir dir per E-Mail zugesandt.<br>Wenn du es vergessen hast, kannst du auf <a href='http://" . $result['Subdomain'] . ".konsole.backup-manager.eu' target='_blank'>http://" . $result['Subdomain'] . ".konsole.backup-manager.eu</a> ein neues anfordern.</p>";
+            
+    		if ($result['aktiv']) {
+    			$output .= "<p>Dein Zugang ist aktiv!</p>";
+    		} else {
+    			$output .= "Dein Zugang ist noch nicht aktiviert. Bitte habe noch etwas Geduld, du wirst per E-Mail informiert, sobald dein Backup-Manager eingerichtet ist.<p>&nbsp;</p>";
+    		} 
+    	} else {
+    		$output = "Bitte w&auml;hle hier deinen gew&uuml;nschten Zugangsnamen und eine E-Mail Adresse f&uuml;r den Backup Manager.<br><br>";
+    		$output .= "Dein Zugang wird dann so aussehen: <u>http://<b>" . $userdata->username . "</b>.konsole.backup-manager.eu</u><br><br>"; 
+    		$output .= "Der Einfachheit halber, haben wir die Felder schon mit deinem angelio Benutzernamen und deiner E-Mail Adresse ausgef&uuml;llt,<br>du kannst aber ganz andere Eintr&auml;ge w&auml;hlen!<br><br>";
+    		$output .= "Bitte beachte, dass der Name schon vergeben sein kann. Wir h&auml;ngen dann ein paar Zahlen daran.<br>";
+    		$output .= "Sobald du deinen Namen aktiviert hast, legen wir deinen Backup Manager an. Das kann 2-3 Werktage dauern.<br>";
+    		$output .= "Wir informieren dich per E-Mail, wenn der Zugang eingerichtet ist!";
+    		$form = drupal_get_form('angelio_backup_form',$uid);
+    		//$form['userid']['value'] = $uid;
+    		$output .= drupal_render($form);
+            $output .= "<p>&nbsp;</p>";
+    	}	
+    }
 	return $output;
 }
 
@@ -2723,6 +2793,45 @@ function angelio_backup_form($form, &$form_state, $uid) {
   return $form;
 }
 
+function angelio_backup_aktiviert_form($form, &$form_state, $uid) {
+  $userdata = angelio_get_userobject($uid);
+
+    db_set_active('angelio_daten');
+    $sql = "SELECT * FROM {tbl_Backup} WHERE KundenID_online=" . $uid;
+    $result = db_query($sql)->fetchAssoc();
+    db_set_active();    
+
+  $form['subdomain'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Subdomain:',
+    '#default_value' => $result['Subdomain'],
+    '#required' => TRUE
+  );
+  
+  $form['uid'] = array(
+    '#type' => 'textfield', 
+    '#default_value' => $uid,
+    );
+  
+  $form['submit_button'] = array(
+    '#type' => 'submit',
+    '#value' => 'Jetzt aktivieren',
+  );
+  return $form;
+}
+
+function angelio_backup_aktiviert_form_submit($form, &$form_state) {
+    $subdomain = $form_state['values']['subdomain'];
+    $uid = $form_state['values']['uid'];
+   
+    db_set_active("angelio_daten");
+    $sql = "UPDATE {tbl_Backup} SET Subdomain='" . $subdomain . "', aktiv=1 WHERE KundenID_online = " . $uid; 
+    db_query($sql);
+    db_set_active();
+    drupal_set_message("Backup aktiviert.");
+}
+
+
 function angelio_subdomain_validate($element, &$form_state) {
   $username = $element['#value']; 
   if(!angelio_validate_url($username)) {
@@ -2742,9 +2851,10 @@ function angelio_backup_form_submit($form, &$form_state) {
     $email = $form_state['values']['email'];
 	$uid = $form_state['values']['userid'];
     $userdata = angelio_get_userobject($uid);
-	
+	$now = date("Y-m-d H:i:s", time());
+    
 	db_set_active("angelio_daten");
-	$sql = "INSERT INTO {tbl_Backup} (KundenID_online, Subdomain, Email,aktiv) VALUES ('" . $uid . "', '" . $subdomain . "','" . $email . "',0)";	
+	$sql = "INSERT INTO {tbl_Backup} (KundenID_online, Subdomain, Email,aktiv, Datum) VALUES ('" . $uid . "', '" . $subdomain . "','" . $email . "',0,'" . $now . "')";	
 	db_query($sql);
 	db_set_active();
     
@@ -3062,7 +3172,7 @@ global $user;
 
 
     $statistik = array();
-    $bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILVER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+    $bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILBER'=>0, 'GOLD'=>0,'PLATIN'=>0);
     
     $tree = angelio_downline_tree($statistik, $bonuslevels, $userdata->member_id, $userdata->member_id,1,true,9);
     
@@ -3202,4 +3312,72 @@ function angelio_sync_shop($uid) {
         $tuData = curl_exec($tuCurl); 
         curl_close($tuCurl); 
     }
+}
+
+function angelio_upgrade_form($form, &$form_state, $uid) {
+global $user;
+   
+    if($uid!='') {
+        $userdata = angelio_get_userobject($uid);
+    } else {
+        $uid = $user->uid;
+        $userdata = angelio_get_userobject($uid);
+    }
+
+    $upgrade = true;
+    $bonusrolle = angelio_bonusrolle($userdata->bonuslevel);
+    if ($userdata->bonuslevel < 3) {
+        $options = array('3' => 'GOLD: 24,90€/Monat Vollmitgliedschaft inkl. Backup, Unfallversicherung und Cashback');
+    } elseif ($userdata->bonuslevel == 5) 
+    {
+        $options = array('6' => 'RUBIN: 39,90€/Monat RUBIN Mitgliedschaft');
+    } else {
+        $upgrade = false;
+    } 
+    
+    if ($upgrade) {
+        $form['uid'] = array(
+            '#type' => 'hidden',
+            '#value' => $uid,
+        );
+    
+        $form['bonuslevel'] = array(
+            '#title' => 'Neuer Level',   
+            '#type' => 'radios',
+            '#options' => $options,  
+        );
+        
+        $form['submit'] = array(
+            '#type' => 'submit',
+            '#value' => 'Jetzt upgraden',
+            '#suffix' => '<div style="clear:both;"><br></div>'
+        );
+    } else {
+        $form['no_upgrade'] = array(
+            '#markup' => 'Du hast den Level <b>' . $bonusrolle . '</b>.<br><br>Momentan ist ein Upgrade nur durch erreichen des neuen Levels möglich.<br>Bitte erkundige Dich im angelio Karriereplan, was Du dafür tun musst.',
+        );
+    }  
+    
+    
+    return $form;
+}
+
+function angelio_upgrade_form_submit($form, &$form_state) {
+    $uid = $form_state['values']['uid'];
+    $bonuslevel = $form_state['values']['bonuslevel'];
+    $bonustitle = angelio_bonusrolle($bonuslevel);
+    
+    db_set_active('angelio_daten');
+    db_update('tbl_Kunden_Online')
+        ->fields(array('bonuslevel' => $bonuslevel))
+        ->condition('KundenID_online', $uid, '=')
+        ->execute();
+    db_set_active();
+    
+    drupal_set_message("Ihre Mitgliedschaft wurde auf " . $bonustitle . " erhöht und ist nach der nächsten Monatsabrechnung aktiv.");
+    drupal_goto("user");
+}
+
+function angelio_backup_abrechnung() {
+    
 }
