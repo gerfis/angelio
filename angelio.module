@@ -3403,6 +3403,6 @@ function angelio_stufen_berechnen() {
     
     
     db_set_active();
-    watchdog("angelio", "cron: Stufen berechnet.");    
+    //watchdog("angelio", "cron: Stufen berechnet.");    
     // return $output;
 }
