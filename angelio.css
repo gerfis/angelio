@@ -51,6 +51,36 @@ body {}
 	-text-decoration:line-through;
 }
 
+.BRONCE {
+	background-color:#F79647;
+}
+
+.SILBER {
+	background-color:#A6A6A6;
+}
+
+.GOLD {
+	background-color:#FFC000;
+}
+
+.SAPHIR {
+	background-color:#538DD6;
+}
+
+.SMARAGD {
+	background-color:#92D14F;
+}
+
+.RUBIN {
+	background-color:#FF3E3F;
+}
+
+.DIAMANT {
+	background-color:#FFFFFF;
+}
+
+.status-level {border:1px solid #666666;width:10px;}
+
 .schwebend {
 	border:1px dashed #666;
 } 

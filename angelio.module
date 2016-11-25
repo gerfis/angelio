@@ -1,5 +1,24 @@
 <?php
 
+// $Id$
+global $base_url;
+global $user;
+
+require_once('user-forms.inc');
+require_once('num2text.inc');
+
+if (isset($user) && ($user->uid == 1)) {
+    require_once('admin.inc');
+}
+
+// include IBAN test library
+  $path = function_exists('libraries_get_path') ? libraries_get_path('php-iban') : 'sites/all/libraries/php-iban';
+  if (!include($path . '/php-iban.php')) {
+  }
+ 
+ function angelio_cron(){
+     angelio_stufen_berechnen();
+ }
 // watchdog("my_module", '<pre>' . print_r( $my_array_or_object, true) . '</pre>'); 
 
 function angelio_bonusrolle($level) {
@@ -106,25 +125,6 @@ function angelio_goto($row,$q='') {
   // drupal_goto() call gets executed upon redirection.
   exit();
 }
-
-
-
-// $Id$
-global $base_url;
-global $user;
-
-require_once('user-forms.inc');
-require_once('num2text.inc');
-
-if (isset($user) && ($user->uid == 1)) {
-	require_once('admin.inc');
-}
-
-// include IBAN test library
-  $path = function_exists('libraries_get_path') ? libraries_get_path('php-iban') : 'sites/all/libraries/php-iban';
-  if (!include($path . '/php-iban.php')) {
-  }
- 
 
 function angelio_init() {
     global $user;
@@ -411,7 +411,13 @@ function angelio_menu() {
         'access arguments' => array('administer site configuration'),
         'type' => MENU_CALLBACK,
     );
-    
+
+    $items['angelio/stufeberechnen'] = array(
+        'title' => 'angelio Stufen berechnen',
+        'page callback' => 'angelio_stufen_berechnen',
+        'page arguments' => array(0), 
+        'access arguments' => array('access content'),
+    );    
 
     $items['join/%'] = array(
         'title' => 'Register',
@@ -1410,45 +1416,6 @@ global $user;
 	$output .= '</table>';
 	
 	db_set_active();
-
-	/*
-	$output .= "<hr><h3>Struktur</h3>";	
-		
-	$statistik = array();
-	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILBER'=>0, 'GOLD'=>0,'PLATIN'=>0);
-	
-	$tree = angelio_downline_tree($statistik, $bonuslevels, $userdata->member_id, $userdata->member_id,1,false,9);
-	
-	$levels = array('1' => 0, '2' => 0, '3' => 0, '4' => 0, '5' => 0, '6' => 0, '7' => 0, '8' => 0, '9' => 0);
-	$gesamt = 0;
-	
-	foreach ($statistik as $level) {
-		$levels[$level['level']] = $levels[$level['level']] + $level['count'];  
-		$gesamt += $level['count']; 
-	}
-	
-	
-	for ($i = 1; $i < 10; $i++) {
-		$output .= "Level " . $i . ": " . $levels[$i] . "<br>";
-	}
-	$output .= "<p><b>" . t("Total") . ": ". $gesamt . "</b></p>";
-
-	$output .= "<h3>Bonuslevels:</h3>";	
-	$output .= "BRONCE: " . $bonuslevels['BRONCE'] . "<br>";
-	$output .= "SILBER: " . $bonuslevels['SILBER'] . "<br>";
-	$output .= "GOLD: " . $bonuslevels['GOLD'] . "<br>";
-	$output .= "<br><hr><br>";
-	*/
-/*		
-	$output .= $tree;
-	
-	$output .= '<hr><h3>Legende:</h3>';
-	$output .= '<span class="status-white">&nbsp;1&nbsp;</span><span class="level1 stufe2 BRONCE" style="padding-left:20px;">User 1 (id: 210) Vorname </span>: gelb: Frontline<br>';
-	$output .= '<span class="status-white">&nbsp;2&nbsp;</span><span class="level2 stufe2 BRONCE" style="padding-left:40px;">User 2 (id: 214) Vorname </span>: hellgrau: 2. Ebene<br>';
-	$output .= '<span class="status-white">&nbsp;3&nbsp;</span><span class="level3 stufe3 BRONCE" style="padding-left:60px;">User 3 (id: 227) Vorname </span>: grauer: 3. Ebene (usw.)<br>';
-	$output .= '<span class="status-white">&nbsp;4&nbsp;</span><span class="level4 stufe4 BRONCE" style="padding-left:80px;">User 4 (id: 227) Vorname </span>: dunkelgrauer: 4. Ebene (usw.)<br>';	
-	$output .= '<span class="status-white">&nbsp;2&nbsp;</span><span class="level2 stufe2 eigen BRONCE" style="padding-left:40px;">User 5 (id: 230) Vorname </span>: eingerahmt: selber gesponsert<br>';
-*/ 
 	return $output;
 }
 
@@ -1525,7 +1492,7 @@ global $user;
 	db_set_active();
 	
 	$statistik = array();
-	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILBER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILBER'=>0, 'GOLD'=>0,'SAPHIR'=>0,'SMARAGD'=>0,'RUBIN'=>0,'DIAMANT'=>0);
 	
 	
 	$output .= "<hr><h3>Mitgliedschaft: " . $title . " <a href='/upgrade'>(Hier upgraden)</a></h3>";
@@ -1555,18 +1522,21 @@ global $user;
 	$output .= "<tr><td>BRONCE: </td><td>" . $bonuslevels['BRONCE'] . "</td></tr>";
 	$output .= "<tr><td>SILBER: </td><td>" . $bonuslevels['SILBER'] . "</td></tr>";
 	$output .= "<tr><td>GOLD: </td><td>" . $bonuslevels['GOLD'] . "</td></tr>";
-    $output .= "<tr><td>PLATIN: </td><td>" . $bonuslevels['PLATIN'] . "</td></tr>";
+    $output .= "<tr><td>SAPHIR: </td><td>" . $bonuslevels['SAPHIR'] . "</td></tr>";
+    $output .= "<tr><td>SMARAGD: </td><td>" . $bonuslevels['SMARAGD'] . "</td></tr>";
+    $output .= "<tr><td>RUBIN: </td><td>" . $bonuslevels['RUBIN'] . "</td></tr>";
+    $output .= "<tr><td>DIAMANT: </td><td>" . $bonuslevels['DIAMANT'] . "</td></tr>";
 	$output .= "</table><hr><br>";
 
 	$output .= $tree;
 	
 	$output .= '<hr><h3>Legende:</h3>';
-	$output .= '<span class="status-white"> 1 </span><span class="level1 stufe2 BRONCE" style="padding-left:20px;">User 1 (id: 210) Vorname (B)</span>: gelb: Frontline<br>';
-	$output .= '<span class="status-white"> 2 </span><span class="level2 stufe2 BRONCE" style="padding-left:40px;">User 2 (id: 214) Vorname (S)</span>: hellgrau: 2. Ebene<br>';
-	$output .= '<span class="status-white"> 2 </span><span class="level3 stufe3 BRONCE" style="padding-left:60px;">User 3 (id: 227) Vorname (G)</span>: grauer: 3. Ebene (usw.)<br>';
-	$output .= '<span class="status-white"> 2 </span><span class="level4 stufe4 BRONCE" style="padding-left:80px;">User 4 (id: 227) Vorname (P)</span>: dunkelgrauer: 4. Ebene (usw.)<br>';	
-	$output .= '<span class="status-white"> 2 </span><span class="level2 stufe2 eigen BRONCE" style="padding-left:40px;">User 5 (id: 230) Vorname </span>: eingerahmt: selber gesponsert<br>';
-    $output .= '<br>(B): BRONCE, (S): SILBER, (G): GOLD, (P): PLATIN<br>';
+	$output .= '<span class="status-white"> 1 </span><span class="level1 stufe2" style="padding-left:20px;">User 1 (id: 210) Vorname (B)</span>: gelb: Frontline<br>';
+	$output .= '<span class="status-white"> 2 </span><span class="level2 stufe2" style="padding-left:40px;">User 2 (id: 214) Vorname (S)</span>: hellgrau: 2. Ebene<br>';
+	$output .= '<span class="status-white"> 2 </span><span class="level3 stufe3" style="padding-left:60px;">User 3 (id: 227) Vorname (G)</span>: grauer: 3. Ebene (usw.)<br>';
+	$output .= '<span class="status-white"> 2 </span><span class="level4 stufe4" style="padding-left:80px;">User 4 (id: 227) Vorname (P)</span>: dunkelgrauer: 4. Ebene (usw.)<br>';	
+	$output .= '<span class="status-white"> 2 </span><span class="level2 stufe2 eigen" style="padding-left:40px;">User 5 (id: 230) Vorname </span>: eingerahmt: selber gesponsert<br>';
+    $output .= '<br>(BR): BRONCE, (SI): SILBER, (GO): GOLD, (SA): SAPHIR, (SM): SMARAGD, (RU): RUBIN, (DI): DIAMANT<br>';
     $output .= '<p>&nbsp;</p><div id="universum"><img src="/mein-universum/' . $userdata->member_id . '"></div>';
 	
 	
@@ -1596,7 +1566,7 @@ global $user;
 	db_set_active();
 	
 	$statistik = array();
-	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILBER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILBER'=>0, 'GOLD'=>0,'SAPHIR'=>0,'SMARAGD'=>0,'RUBIN'=>0,'DIAMANT'=>0);
 	
 	$tree = angelio_downline_tree($statistik, $bonuslevels, $userdata->member_id, $userdata->member_id,1,true,1000);
 		
@@ -1660,7 +1630,8 @@ function angelio_downline_tree(&$statistik, &$bonuslevels, $uid, $sponsor_id, $l
 			$bonustitle = $levels[0]->title;
 			$bonuslevels[$bonustitle] = $bonuslevels[$bonustitle] + 1; 
 			db_set_active();
-			$output .= '<span class="status-' . $member_status . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . ' ' . $bonustitle . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name  . ' (' . substr($bonustitle,0,1) . ')&nbsp;</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
+			$output .= '<span class="status-level ' . $member_status . ' ' . $bonustitle . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name  . ' (' . substr($bonustitle,0,2) . ')&nbsp;</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
+			// $output .= '<span class="status-' . $member_status . ' ' . $bonustitle . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name  . ' (' . substr($bonustitle,0,2) . ')&nbsp;</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
             // $output .= '<span class="status-' . $member_status . '">&nbsp;' .$level . '&nbsp;</span><span class="level' . $level . ' stufe' . $row->bonuslevel . $eigen . $depthclass . ' ' . $bonustitle . '" style="padding-left:' . $level*20 . 'px;">' . $row->username . ' (id: ' . $row->member_id .  ') ' . $row->first_name  . '&nbsp;</span><br>' . angelio_downline_tree($statistik, $bonuslevels, $row->member_id, $sponsor_id, $level+1,$matrix,$depth);
   		}
  		db_set_active();
@@ -1906,7 +1877,7 @@ function new_TestMember($sponsor_id, $datum) {
 	}
 
 	$statistik = array();
-	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILBER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+	$bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILBER'=>0, 'GOLD'=>0,'SAPHIR'=>0,'SMARAGD'=>0,'RUBIN'=>0,'DIAMANT'=>0);
 	$output = angelio_downline_tree($statistik, $bonuslevels, 1, 1,1,true,9);
 	
 	return $output;
@@ -3172,7 +3143,7 @@ global $user;
 
 
     $statistik = array();
-    $bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILBER'=>0, 'GOLD'=>0,'PLATIN'=>0);
+    $bonuslevels = array('FREE'=>0, 'BRONCE'=>0, 'SILBER'=>0, 'GOLD'=>0,'SAPHIR'=>0,'SMARAGD'=>0,'RUBIN'=>0,'DIAMANT'=>0);
     
     $tree = angelio_downline_tree($statistik, $bonuslevels, $userdata->member_id, $userdata->member_id,1,true,9);
     
@@ -3381,4 +3352,57 @@ function angelio_upgrade_form_submit($form, &$form_state) {
 
 function angelio_backup_abrechnung() {
     
+}
+
+function angelio_stufen_berechnen() {
+    db_set_active('angelio_daten');
+    $sql = "SELECT * FROM {tbl_Kunden_Online} WHERE bonuslevel > 2 AND bonuslevel < 6";
+    $alle = db_query($sql);
+
+    $output = "";
+    
+    while ($kunde = $alle->fetchAssoc()) {
+        // SAPHIR: 3 selber gesponsert
+        $sql = "SELECT count(*) FROM {tbl_Kunden_Online} WHERE ReferrerID_O = " . $kunde['KundenID_online'];
+        $gesponsert = db_query($sql)->fetchField();
+        if ($gesponsert > 2) {
+            db_update('tbl_Kunden_Online')
+                ->fields(array('bonuslevel' => 4))
+                ->condition('KundenID_online', $kunde['KundenID_online'], '=')
+                ->execute();
+                $output .= $kunde['strUsername_O'] . " ist SAPHIR<br>";
+        } else {
+            db_update('tbl_Kunden_Online')
+                ->fields(array('bonuslevel' => 3))
+                ->condition('KundenID_online', $kunde['KundenID_online'], '=')
+                ->execute();            
+            $output .= $kunde['strUsername_O'] . " ist GOLD<br>";
+        }
+        
+        // SMARAGD: 1. und 2. Ebene voll
+        $sql = "SELECT lngLevel, intAnzahlKunden FROM {tbl_stat_Kunden_Downlines} WHERE sponsorID = " . $kunde['KundenID_online'];
+        $ebenen = db_query($sql)->fetchAllAssoc('lngLevel');
+        if ($gesponsert > 2) { // nur wenn GOLD
+        //print_pre($ebenen,$kunde['strUsername_O']);
+            if ($ebenen[1]->intAnzahlKunden == 3 && $ebenen[2]->intAnzahlKunden == 9 && $ebenen[3]->intAnzahlKunden == 27) {
+                db_update('tbl_Kunden_Online')
+                    ->fields(array('bonuslevel' => 6))
+                    ->condition('KundenID_online', $kunde['KundenID_online'], '=')
+                    ->execute();                
+                $output .= $kunde['strUsername_O'] . " ist RUBIN<br>";
+            } elseif ($ebenen[1]->intAnzahlKunden == 3 && $ebenen[2]->intAnzahlKunden == 9) {
+                db_update('tbl_Kunden_Online')
+                    ->fields(array('bonuslevel' => 5))
+                    ->condition('KundenID_online', $kunde['KundenID_online'], '=')
+                    ->execute();                
+                $output .= $kunde['strUsername_O'] . " ist SMARAGD<br>";
+            }
+         }
+    }
+    
+    
+    
+    db_set_active();
+    watchdog("angelio", "cron: Stufen berechnet.");    
+    // return $output;
 }
