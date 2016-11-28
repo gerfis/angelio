@@ -412,6 +412,14 @@ function angelio_menu() {
         'type' => MENU_CALLBACK,
     );
 
+
+    $items['angelio/mitglieder'] = array(
+        'title' => 'Zum angelio Shop',
+        'page callback' => 'angelio_mitgliederliste',
+        'page arguments' => array(0), 
+        'access arguments' => array('administer site configuration'),
+    );
+    
     $items['angelio/stufeberechnen'] = array(
         'title' => 'angelio Stufen berechnen',
         'page callback' => 'angelio_stufen_berechnen',
@@ -2065,15 +2073,21 @@ global $user;
 	$output .= '<table id="tblCommissionEbenen"><tr><th class="tblCommissionCol1">Frontline</th><th class="tblCommissionCol2">Anzahl Mitglieder (inkl. Frontline)</th><tr>';		
 	while ($row = $result->fetchAssoc()) {
 		switch ($bonuslevel) {
+            case 1:
 			case 2:
-				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, strUsername_O as Kunde FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 7 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
+				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, strUsername_O as Kunde FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel <= 5 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
 				break;
 			case 3:
-				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, strUsername_O as Kunde FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 8 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
+				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, strUsername_O as Kunde FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel <= 7 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
 				break;
 			case 4:
-				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, strUsername_O as Kunde FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel < 9 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
-				break;				
+				$sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, strUsername_O as Kunde FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel <= 8 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
+				break;
+            case 5:
+            case 6:
+            case 7:
+                $sql = "SELECT sponsorID, sum(intAnzahlKunden) as Kunden, strUsername_O as Kunde FROM {tbl_stat_Kunden_Downlines} kd INNER JOIN {tbl_Kunden_Online} ku ON kd.sponsorID=ku.KundenID_online WHERE kd.lngLevel <= 9 AND kd.lngLevel > 0 AND kd.sponsorID=" . $row['KundenID_online'];
+                break;
 		}
 		
 		$frontline = db_query($sql)->fetchAssoc();
@@ -3405,4 +3419,18 @@ function angelio_stufen_berechnen() {
     db_set_active();
     //watchdog("angelio", "cron: Stufen berechnet.");    
     // return $output;
+}
+
+function angelio_mitgliederliste(){
+    db_set_active('angelio_daten');
+    $sql = "SELECT KundenID_online,strEmail_O,strVName_O,strNName_O,strUsername_O,title from tbl_Kunden_Online k, tblBonuslevels b WHERE k.bonuslevel = b.bid AND ysnInaktiv=0;";
+    $alle = db_query($sql);
+
+    $output = "Email;Vorname;Nachname;Id;Username;Bonuslevel<br>";
+    while ($kunde = $alle->fetchAssoc()) {
+        $output .= $kunde['strEmail_O'] . ";" . $kunde['strVName_O'] . ";" . $kunde['strNName_O'] . ";". $kunde['KundenID_online'] . ";" . $kunde['strUsername_O'] . ";" . $kunde['title'] . "<br>";
+    }
+    db_set_active();
+    
+    return $output;
 }
